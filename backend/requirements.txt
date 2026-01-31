@@ -8,3 +8,5 @@ email-validator
 
 supabase
 python-dotenv
+celery
+redis
