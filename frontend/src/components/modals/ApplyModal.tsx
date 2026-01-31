@@ -1,154 +1,185 @@
 "use client";
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Rocket, FileText, CheckCircle, ArrowLeft, X, MapPin, Briefcase, Globe, ShieldCheck, User, Phone, GraduationCap, Award } from 'lucide-react';
 import { uploadResume } from '@/src/lib/supabase';
 
 export default function ApplyModal({ job, onClose }: { job: any, onClose: () => void }) {
-  const [step, setStep] = useState<'upload' | 'parsing' | 'form' | 'launch'>('upload');
-  const [formData, setFormData] = useState({ 
-    full_name: '', 
-    email: '', 
-    phone: '', 
-    resume_url: '',
-    cover_letter: ''
+  const [step, setStep] = useState(1); // 1: Upload, 2: Form, 3: Auth, 4: Launch
+  const [isParsing, setIsParsing] = useState(false);
+  const [formData, setFormData] = useState({
+    full_name: '', email: '', phone: '', education: '',
+    skills: '', total_experience_years: '', summary: '', 
+    github_url: '', linkedin_url: '', resume_url: ''
   });
-  const [error, setError] = useState<string>('');
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Validate file
-    if (file.size > 10 * 1024 * 1024) { // 10MB
-      setError('File too large. Max 10MB.');
-      return;
-    }
-
-    if (!['application/pdf', 
-          'application/msword',
-          'application/vnd.openxmlformats-officedocument.wordprocessingml.document']
-          .includes(file.type)) {
-      setError('Please upload PDF or Word document.');
-      return;
-    }
-
-    setError('');
-    setStep('parsing');
-    
+    setIsParsing(true);
     try {
-      // 1. Upload to Supabase Storage
-      const resumeUrl = await uploadResume(file);
-      
-      // 2. Parse with FastAPI
-      const parseFormData = new FormData();
-      parseFormData.append('file', file);
-      
-      // For demo, you can skip the actual API call if it's not ready
-      const useMockData = true; // Set to false for real API
-      
-      let parsedInfo;
-      if (!useMockData) {
-        const parseResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/parse_resume`, {
-          method: 'POST',
-          body: parseFormData,
-        });
-        
-        if (!parseResponse.ok) {
-          throw new Error(`Parse failed: ${parseResponse.statusText}`);
-        }
-        
-        parsedInfo = await parseResponse.json();
-      } else {
-        // Mock data for demo
-        await new Promise(resolve => setTimeout(resolve, 1500));
-        parsedInfo = {
-          full_name: 'Alex Johnson',
-          email: 'alex.johnson@example.com',
-          phone: '+1 (555) 987-6543',
-          skills: ['React', 'TypeScript', 'Next.js', 'Node.js'],
-          experience: '5 years as Full Stack Developer'
+      /* // --- PRODUCTION READY CODE ---
+      const publicUrl = await uploadResume(file);
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/parse_resume`, { method: 'POST', body: file });
+      const parsedData = await response.json();
+      setFormData(prev => ({ ...prev, ...parsedData, resume_url: publicUrl }));
+      setStep(2);
+      */
+
+      // --- DEMO MODE CODE ---
+      setTimeout(() => {
+        const mockParsedData = {
+          "full_name": "Jonah Janar Ji",
+          "email": "jona.janar@example.com",
+          "phone": "+971 50 123 4567",
+          "education": "Master of Business Administration (MBA), Focus on Tech Management",
+          "total_experience_years": "5",
+          "skills": "React, Next.js, FastAPI, PostgreSQL, Project Management, Python",
+          "summary": "Experienced professional with a background in engineering and business administration. Specialized in building scalable web applications.",
+          "github_url": "https://github.com/jona",
+          "linkedin_url": "https://linkedin.com/in/jona",
+          "resume_url": "https://vunwdklvoxohyaqcqluw.supabase.co/storage/v1/object/public/agency/demo.pdf"
         };
-      }
-      
-      setFormData({ 
-        ...formData, 
-        ...parsedInfo, 
-        resume_url: resumeUrl 
-      });
-      setStep('form');
-      
-    } catch (error) {
-      console.error('Upload/Parsing error:', error);
-      setError('Failed to process resume. Please try again.');
-      setStep('upload');
+        setFormData(prev => ({ ...prev, ...mockParsedData }));
+        setIsParsing(false);
+        setStep(2); 
+      }, 2000);
+    } catch (err) {
+      console.error("Mission Control Error:", err);
+      setIsParsing(false);
     }
   };
 
   const handleFinalSubmit = async () => {
-    setStep('launch');
-    
-    // Submit to your FastAPI backend
+    setStep(4);
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/apply`, {
+      /* // --- PRODUCTION READY CODE ---
+      await fetch(`${process.env.NEXT_PUBLIC_API_URL}/apply`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          job_id: job.id,
-          ...formData
-        }),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...formData, job_id: job.id })
       });
-      
-      if (!response.ok) {
-        throw new Error('Submission failed');
-      }
-      
-      // Success - close after animation
-      setTimeout(() => {
-        onClose();
-        // Optional: Show success toast
-        alert('Application submitted successfully!');
-      }, 3000);
-      
-    } catch (error) {
-      console.error('Submission error:', error);
-      setError('Failed to submit application.');
-      setStep('form');
+      */
+      setTimeout(onClose, 4000);
+    } catch (err) {
+      setStep(3); 
     }
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/90 backdrop-blur-sm p-4">
-      <motion.div 
-        initial={{ scale: 0.9, opacity: 0 }} 
-        animate={{ scale: 1, opacity: 1 }}
-        className="bg-slate-900 border border-slate-800 w-full max-w-2xl rounded-3xl overflow-hidden shadow-2xl"
-      >
-        {error && (
-          <div className="bg-red-900/50 border border-red-700 text-red-200 p-4 m-4 rounded-xl">
-            {error}
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/90 backdrop-blur-md p-4">
+      <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-slate-900 border border-slate-800 w-full max-w-5xl h-[700px] rounded-[2.5rem] overflow-hidden flex shadow-2xl relative">
+        <button onClick={onClose} className="absolute top-6 right-8 z-50 text-slate-500 hover:text-white transition"><X size={24} /></button>
+
+        {/* LEFT PANE: Mission Briefing */}
+        <div className="w-5/12 bg-slate-950/50 p-10 border-r border-slate-800 hidden md:flex flex-col">
+          <div className="flex items-center gap-2 text-blue-500 font-bold uppercase tracking-widest text-[10px] mb-6"><Globe size={14} /> Mission Briefing</div>
+          <h2 className="text-3xl font-bold text-white mb-4 leading-tight">{job.role_title}</h2>
+          <div className="space-y-4 mb-8">
+            <div className="flex items-center gap-3 text-slate-400 text-sm italic"><Briefcase size={18} className="text-blue-500" /> {job.department}</div>
+            <div className="flex items-center gap-3 text-slate-400 text-sm italic"><MapPin size={18} className="text-blue-500" /> {job.location}</div>
           </div>
-        )}
-        
-        {/* Rest of your JSX remains the same */}
-        {step === 'upload' && (
-          <div className="p-10 text-center">
-            <h2 className="text-2xl font-bold text-white mb-6">Apply for {job.role_title}</h2>
-            <div className="border-2 border-dashed border-slate-700 p-12 rounded-2xl hover:border-blue-500 transition cursor-pointer relative">
-              <input 
-                type="file" 
-                onChange={handleFileUpload} 
-                accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-                className="absolute inset-0 opacity-0 cursor-pointer" 
-              />
-              <div className="text-slate-400">Drop your resume here or click to browse</div>
-              <div className="text-xs text-slate-500 mt-2">PDF, DOCX up to 10MB</div>
-            </div>
+          <div className="flex-1 overflow-y-auto pr-4 custom-scrollbar text-slate-400 text-sm leading-relaxed">
+            <h4 className="text-slate-200 font-semibold mb-2 uppercase tracking-tighter">Objective</h4>
+            <p>{job.description}</p>
           </div>
-        )}
-        
-        {/* ... rest of your modal code ... */}
+        </div>
+
+        {/* RIGHT PANE: Mission Execution */}
+        <div className="flex-1 p-10 relative overflow-hidden flex flex-col justify-center bg-slate-900">
+          <AnimatePresence mode="wait">
+            
+            {step === 1 && (
+              <motion.div key="step1" className="text-center" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                <h2 className="text-2xl font-bold text-white mb-2 uppercase">Initiate Application</h2>
+                <p className="text-slate-400 mb-8 text-sm">Upload flight data to begin AI mission mapping.</p>
+                {isParsing ? (
+                  <div className="py-12"><motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 2, ease: "linear" }} className="inline-block mb-6"><Rocket className="text-blue-500 w-12 h-12" /></motion.div><p className="text-slate-300 italic">Agent is analyzing coordinates...</p></div>
+                ) : (
+                  <div className="border-2 border-dashed border-slate-700 p-12 rounded-3xl hover:border-blue-500 transition-all cursor-pointer bg-slate-950/30 group relative">
+                    <input type="file" onChange={handleFileUpload} className="absolute inset-0 opacity-0 cursor-pointer" />
+                    <FileText className="mx-auto text-slate-500 group-hover:text-blue-500 mb-4 transition-colors" size={48} />
+                    <p className="text-slate-300 font-medium">Drop Flight Log (Resume)</p>
+                  </div>
+                )}
+                <button onClick={onClose} className="mt-8 text-slate-600 hover:text-red-400 text-xs font-bold uppercase tracking-widest">Abort Mission</button>
+              </motion.div>
+            )}
+
+            {step === 2 && (
+              <motion.div key="step2" initial={{ x: 50, opacity: 0 }} animate={{ x: 0, opacity: 1 }} className="h-full flex flex-col justify-center">
+                <h2 className="text-xl font-bold text-white mb-1 flex items-center gap-2"><CheckCircle className="text-blue-500" size={20}/> Verify Mission Profile</h2>
+                <p className="text-slate-400 text-xs mb-6 italic">AI has auto-filled these coordinates. Confirm before final launch.</p>
+                
+                <div className="grid grid-cols-2 gap-4 flex-1 overflow-y-auto pr-2 custom-scrollbar">
+                  <div className="col-span-1 space-y-1">
+                    <label className="text-[9px] text-slate-500 font-bold uppercase tracking-widest ml-1">Full Name</label>
+                    <input value={formData.full_name} onChange={e => setFormData({ ...formData, full_name: e.target.value })} className="w-full bg-slate-950 border border-slate-800 p-2.5 rounded-xl text-white text-sm" />
+                  </div>
+                  <div className="col-span-1 space-y-1">
+                    <label className="text-[9px] text-slate-500 font-bold uppercase tracking-widest ml-1">Email</label>
+                    <input value={formData.email} onChange={e => setFormData({ ...formData, email: e.target.value })} className="w-full bg-slate-950 border border-slate-800 p-2.5 rounded-xl text-white text-sm" />
+                  </div>
+                  <div className="col-span-1 space-y-1">
+                    <label className="text-[9px] text-slate-500 font-bold uppercase tracking-widest ml-1">Phone</label>
+                    <input value={formData.phone} onChange={e => setFormData({ ...formData, phone: e.target.value })} className="w-full bg-slate-950 border border-slate-800 p-2.5 rounded-xl text-white text-sm" />
+                  </div>
+                  <div className="col-span-1 space-y-1">
+                    <label className="text-[9px] text-slate-500 font-bold uppercase tracking-widest ml-1">Experience (Years)</label>
+                    <input value={formData.total_experience_years} onChange={e => setFormData({ ...formData, total_experience_years: e.target.value })} className="w-full bg-slate-950 border border-slate-800 p-2.5 rounded-xl text-white text-sm" />
+                  </div>
+                  <div className="col-span-2 space-y-1">
+                    <label className="text-[9px] text-slate-500 font-bold uppercase tracking-widest ml-1">Education</label>
+                    <input value={formData.education} onChange={e => setFormData({ ...formData, education: e.target.value })} className="w-full bg-slate-950 border border-slate-800 p-2.5 rounded-xl text-white text-sm" />
+                  </div>
+                  <div className="col-span-2 space-y-1">
+                    <label className="text-[9px] text-slate-500 font-bold uppercase tracking-widest ml-1">Skills</label>
+                    <textarea value={formData.skills} onChange={e => setFormData({ ...formData, skills: e.target.value })} className="w-full bg-slate-950 border border-slate-800 p-2.5 rounded-xl text-white text-xs h-16 resize-none" />
+                  </div>
+                  <div className="col-span-1 space-y-1">
+                    <label className="text-[9px] text-slate-500 font-bold uppercase tracking-widest ml-1">GitHub</label>
+                    <input value={formData.github_url} onChange={e => setFormData({ ...formData, github_url: e.target.value })} className="w-full bg-slate-950 border border-slate-800 p-2.5 rounded-xl text-white text-xs" />
+                  </div>
+                  <div className="col-span-1 space-y-1">
+                    <label className="text-[9px] text-slate-500 font-bold uppercase tracking-widest ml-1">LinkedIn</label>
+                    <input value={formData.linkedin_url} onChange={e => setFormData({ ...formData, linkedin_url: e.target.value })} className="w-full bg-slate-950 border border-slate-800 p-2.5 rounded-xl text-white text-xs" />
+                  </div>
+                </div>
+
+                <div className="mt-6 flex gap-4">
+                  <button onClick={() => setStep(1)} className="text-slate-400 font-bold text-[10px] uppercase tracking-widest flex items-center gap-2"><ArrowLeft size={14}/> Re-Upload</button>
+                  <button onClick={() => setStep(3)} className="flex-1 bg-blue-600 text-white py-4 rounded-2xl font-bold hover:bg-blue-500 shadow-lg shadow-blue-900/40 uppercase tracking-widest text-xs">Verify & Next</button>
+                </div>
+              </motion.div>
+            )}
+
+            {step === 3 && (
+              <motion.div key="step3" className="text-center max-w-sm mx-auto" initial={{ x: 50, opacity: 0 }} animate={{ x: 0, opacity: 1 }}>
+                <ShieldCheck className="mx-auto text-green-500 mb-6" size={56} />
+                <h2 className="text-2xl font-bold text-white mb-2 uppercase tracking-wide">Secure Mission</h2>
+                <p className="text-slate-400 mb-8 text-sm">Create a password to encrypt your profile and track orbit status.</p>
+                <input type="password" placeholder="Mission Password" className="w-full bg-slate-950 border border-slate-800 rounded-xl p-4 text-white mb-4 outline-none focus:border-blue-500" />
+                <div className="flex flex-col gap-3">
+                  <button onClick={handleFinalSubmit} className="w-full bg-blue-600 text-white py-4 rounded-xl font-bold hover:bg-blue-500 shadow-lg shadow-blue-900/40 uppercase text-xs tracking-widest">Initiate Launch</button>
+                  <button onClick={() => setStep(2)} className="text-slate-500 text-xs uppercase font-bold tracking-widest">Back to Data</button>
+                </div>
+              </motion.div>
+            )}
+
+            {step === 4 && (
+              <motion.div key="step4" className="h-full flex flex-col items-center justify-center text-center">
+                <motion.div initial={{ y: 200, scale: 1 }} animate={{ y: -700, scale: 0.1 }} transition={{ duration: 3.5, ease: "easeIn" }}>
+                  <Rocket className="text-blue-500" size={80} />
+                  <div className="text-orange-500 text-2xl mt-2 animate-pulse">🔥</div>
+                </motion.div>
+                <h2 className="text-3xl font-bold text-white mt-8 tracking-tighter">Mission Confirmed!</h2>
+                <p className="text-slate-400 text-sm mt-2">Candidate data is now in orbit. Transmitting to HR HQ.</p>
+              </motion.div>
+            )}
+
+          </AnimatePresence>
+        </div>
       </motion.div>
     </div>
   );

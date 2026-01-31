@@ -1,34 +1,34 @@
-// components/layout/Header.tsx
+// src/components/layout/Header.tsx
 "use client";
+import React from 'react';
 import Link from 'next/link';
-import { useState } from 'react';
+import { UserCircle } from 'lucide-react';
 
-export default function Header({ user }: { user: any }) {
+export default function Header({ user }: { user?: any }) {
   return (
-    <header className="sticky top-0 z-50 bg-slate-950/80 backdrop-blur-md border-b border-slate-800 px-6 py-4 flex justify-between items-center">
-      <div className="flex items-center gap-4">
-        <div className="bg-white p-2 rounded-md">
-          <img src="/images/spaceLogo.png" alt="Space42" className="h-8" />
+    <header className="sticky top-0 z-50 bg-slate-950/80 backdrop-blur-xl border-b border-white/10 px-8 py-4 flex justify-between items-center">
+      <div className="flex items-center gap-3">
+        <div className="bg-white p-1.5 rounded-lg shadow-[0_0_15px_rgba(255,255,255,0.2)]">
+          {/* Ensure image is in /public/spaceLogo.png */}
+          <img src="/images/spaceLogo.png" alt="Space42" className="h-7" />
         </div>
-        <span className="text-slate-400 italic text-sm hidden md:block">
-          Shape the Future of SpaceTech and AI Innovation at Space42
-        </span>
+        <p className="text-xs font-medium tracking-wider text-slate-400 uppercase hidden md:block italic">
+          Shape the Future of SpaceTech and AI Innovation
+        </p>
       </div>
-      
-      <nav className="flex gap-6 items-center">
+
+      <div className="flex items-center gap-6">
         {user ? (
-          <>
-            <Link href="/my-jobs" className="text-slate-200 hover:text-blue-400 transition">My Jobs</Link>
-            <div className="h-8 w-8 rounded-full bg-blue-600 flex items-center justify-center text-xs">
-              {user.name[0]}
-            </div>
-          </>
+          <Link href="/my-jobs" className="text-sm font-bold text-blue-400 hover:text-blue-300 transition">
+            My Missions
+          </Link>
         ) : (
-          <button className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-full transition shadow-lg shadow-blue-900/20">
-            Login
+          <button className="flex items-center gap-2 bg-transparent border border-blue-500/50 hover:bg-blue-500/10 text-blue-400 px-5 py-2 rounded-full text-sm font-bold transition-all cursor-pointer" title='Candidate Login'>
+            <UserCircle size={18} />
+            Mission Access
           </button>
         )}
-      </nav>
+      </div>
     </header>
   );
 }
