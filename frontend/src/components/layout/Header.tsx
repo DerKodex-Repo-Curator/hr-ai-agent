@@ -2,17 +2,33 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { UserCircle, Rocket, Satellite, Menu, X } from 'lucide-react';
+import { Menu, X, LogOut, Shield } from 'lucide-react';
+import { supabase } from '@/src/lib/supabase';
 
 export default function Header({ onJoinCrew }: { onJoinCrew: () => void }) {
   const pathname = usePathname();
-  // For the demo, we'll manually toggle login. 
-  // In production, this would use your Supabase/Auth context.
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [user, setUser] = useState<any>(null); // Real user state
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
-  const handleCrewClick = () => {
-    onJoinCrew();
+  useEffect(() => {
+    // Check current session
+    const getSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      setUser(session?.user ?? null);
+    };
+    getSession();
+
+    // Listen for sign-in/sign-out events
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    window.location.href = "/";
   };
 
   return (
@@ -39,41 +55,36 @@ export default function Header({ onJoinCrew }: { onJoinCrew: () => void }) {
             Mission Hub
           </Link>
 
-          {isLoggedIn ? (
+          {user && (
             <Link
               href="/my-missions"
               className={`text-xs font-bold uppercase tracking-widest transition-colors ${pathname === '/my-missions' ? 'text-blue-400' : 'text-slate-400 hover:text-white'}`}
             >
               My Orbit
             </Link>
-          ) : (
-            <button
-              onClick={() => setIsLoggedIn(true)} // Simulated Login for Demo
-              className="text-xs font-bold uppercase tracking-widest text-slate-400 hover:text-white transition-colors"
-            >
-              Access Mission
-            </button>
           )}
 
-          {/* ACTION BUTTON */}
           <div className="h-8 w-[1px] bg-white/10 mx-2" />
 
-          {isLoggedIn ? (
+          {user ? (
             <div className="flex items-center gap-4">
               <div className="text-right hidden lg:block">
-                <p className="text-[10px] font-bold text-white leading-none">J. JANAR JI</p>
+                <p className="text-[10px] font-bold text-white leading-none truncate max-w-[120px]">
+                  {user.email.split('@')[0].toUpperCase()}
+                </p>
                 <p className="text-[8px] text-blue-500 font-bold uppercase tracking-tighter">Specialist</p>
               </div>
               <button
-                onClick={() => setIsLoggedIn(false)}
+                onClick={handleLogout}
                 className="bg-slate-900 border border-white/10 p-2 rounded-full hover:border-red-500/50 transition-all text-slate-400 hover:text-red-400"
+                title="Abort Session"
               >
-                <X size={18} />
+                <LogOut size={18} />
               </button>
             </div>
           ) : (
             <button
-              onClick={handleCrewClick}
+              onClick={onJoinCrew}
               className="bg-blue-600 hover:bg-blue-500 text-white px-6 py-2 rounded-full text-xs font-bold transition-all shadow-lg shadow-blue-900/30"
             >
               Join Crew
@@ -91,18 +102,14 @@ export default function Header({ onJoinCrew }: { onJoinCrew: () => void }) {
       {isMenuOpen && (
         <div className="absolute top-full left-0 w-full bg-slate-900 border-b border-white/10 p-6 flex flex-col gap-6 md:hidden backdrop-blur-2xl">
           <Link href="/" onClick={() => setIsMenuOpen(false)} className="text-sm font-bold uppercase tracking-widest text-white">Mission Hub</Link>
-          {isLoggedIn && (
+          {user && (
             <Link href="/my-missions" onClick={() => setIsMenuOpen(false)} className="text-sm font-bold uppercase tracking-widest text-white">My Orbit</Link>
           )}
-          <button className="w-full bg-blue-600 text-white py-4 rounded-xl font-bold uppercase text-xs tracking-widest">
-            {!isLoggedIn && (
-              <button
-                onClick={onJoinCrew} // Trigger the scroll
-                className="bg-blue-600 hover:bg-blue-500 text-white px-6 py-2 rounded-full text-xs font-bold transition-all shadow-lg shadow-blue-900/30 active:scale-95"
-              >
-                Join Crew
-              </button>
-            )}
+          <button 
+            onClick={user ? handleLogout : onJoinCrew} 
+            className={`w-full py-4 rounded-xl font-bold uppercase text-xs tracking-widest ${user ? 'bg-red-500/20 text-red-500' : 'bg-blue-600 text-white'}`}
+          >
+            {user ? 'Abort Mission' : 'Join Crew'}
           </button>
         </div>
       )}

@@ -2,14 +2,15 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Rocket, FileText, CheckCircle, ArrowLeft, X, MapPin, Briefcase, Globe, ShieldCheck, User, Phone, GraduationCap, Award } from 'lucide-react';
-import { uploadResume } from '@/src/lib/supabase';
+import { supabase, uploadResume } from '@/src/lib/supabase';
 
 export default function ApplyModal({ job, onClose }: { job: any, onClose: () => void }) {
   const [step, setStep] = useState(1); // 1: Upload, 2: Form, 3: Auth, 4: Launch
   const [isParsing, setIsParsing] = useState(false);
+  const [missionPassword, setMissionPassword] = useState('');
   const [formData, setFormData] = useState({
     full_name: '', email: '', phone: '', education: '',
-    skills: '', total_experience_years: '', summary: '', 
+    skills: '', total_experience_years: '', summary: '',
     github_url: '', linkedin_url: '', resume_url: ''
   });
 
@@ -43,7 +44,7 @@ export default function ApplyModal({ job, onClose }: { job: any, onClose: () => 
         };
         setFormData(prev => ({ ...prev, ...mockParsedData }));
         setIsParsing(false);
-        setStep(2); 
+        setStep(2);
       }, 2000);
     } catch (err) {
       console.error("Mission Control Error:", err);
@@ -54,16 +55,46 @@ export default function ApplyModal({ job, onClose }: { job: any, onClose: () => 
   const handleFinalSubmit = async () => {
     setStep(4);
     try {
-      /* // --- PRODUCTION READY CODE ---
-      await fetch(`${process.env.NEXT_PUBLIC_API_URL}/apply`, {
+      // 1. Attempt to Sign Up
+      let { data: authData, error: authError } = await supabase.auth.signUp({
+        email: formData.email,
+        password: missionPassword,
+      });
+
+      // 2. If user exists, attempt to Sign In instead
+      if (authError?.code === 'user_already_exists') {
+        const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+          email: formData.email,
+          password: missionPassword,
+        });
+
+        if (signInError) throw signInError;
+        authData = signInData; // Use the sign-in data to proceed
+      } else if (authError) {
+        throw authError;
+      }
+
+      // 3. Proceed to FastAPI Hand-off
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/apply`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...formData, job_id: job.id })
+        body: JSON.stringify({
+          ...formData,
+          user_id: authData.user?.id,
+          job_id: job.id
+        })
       });
-      */
-      setTimeout(onClose, 4000);
-    } catch (err) {
-      setStep(3); 
+
+      if (!response.ok) throw new Error("FastAPI sync failed");
+
+      setTimeout(() => {
+        window.location.href = "/my-missions";
+      }, 4000);
+
+    } catch (err: any) {
+      console.error("Mission Aborted:", err.message);
+      setStep(3);
+      alert(err.message); // Show the specific error to the user
     }
   };
 
@@ -89,7 +120,7 @@ export default function ApplyModal({ job, onClose }: { job: any, onClose: () => 
         {/* RIGHT PANE: Mission Execution */}
         <div className="flex-1 p-10 relative overflow-hidden flex flex-col justify-center bg-slate-900">
           <AnimatePresence mode="wait">
-            
+
             {step === 1 && (
               <motion.div key="step1" className="text-center" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
                 <h2 className="text-2xl font-bold text-white mb-2 uppercase">Initiate Application</h2>
@@ -109,9 +140,9 @@ export default function ApplyModal({ job, onClose }: { job: any, onClose: () => 
 
             {step === 2 && (
               <motion.div key="step2" initial={{ x: 50, opacity: 0 }} animate={{ x: 0, opacity: 1 }} className="h-full flex flex-col justify-center">
-                <h2 className="text-xl font-bold text-white mb-1 flex items-center gap-2"><CheckCircle className="text-blue-500" size={20}/> Verify Mission Profile</h2>
+                <h2 className="text-xl font-bold text-white mb-1 flex items-center gap-2"><CheckCircle className="text-blue-500" size={20} /> Verify Mission Profile</h2>
                 <p className="text-slate-400 text-xs mb-6 italic">AI has auto-filled these coordinates. Confirm before final launch.</p>
-                
+
                 <div className="grid grid-cols-2 gap-4 flex-1 overflow-y-auto pr-2 custom-scrollbar">
                   <div className="col-span-1 space-y-1">
                     <label className="text-[9px] text-slate-500 font-bold uppercase tracking-widest ml-1">Full Name</label>
@@ -148,7 +179,7 @@ export default function ApplyModal({ job, onClose }: { job: any, onClose: () => 
                 </div>
 
                 <div className="mt-6 flex gap-4">
-                  <button onClick={() => setStep(1)} className="text-slate-400 font-bold text-[10px] uppercase tracking-widest flex items-center gap-2"><ArrowLeft size={14}/> Re-Upload</button>
+                  <button onClick={() => setStep(1)} className="text-slate-400 font-bold text-[10px] uppercase tracking-widest flex items-center gap-2"><ArrowLeft size={14} /> Re-Upload</button>
                   <button onClick={() => setStep(3)} className="flex-1 bg-blue-600 text-white py-4 rounded-2xl font-bold hover:bg-blue-500 shadow-lg shadow-blue-900/40 uppercase tracking-widest text-xs">Verify & Next</button>
                 </div>
               </motion.div>
@@ -159,7 +190,13 @@ export default function ApplyModal({ job, onClose }: { job: any, onClose: () => 
                 <ShieldCheck className="mx-auto text-green-500 mb-6" size={56} />
                 <h2 className="text-2xl font-bold text-white mb-2 uppercase tracking-wide">Secure Mission</h2>
                 <p className="text-slate-400 mb-8 text-sm">Create a password to encrypt your profile and track orbit status.</p>
-                <input type="password" placeholder="Mission Password" className="w-full bg-slate-950 border border-slate-800 rounded-xl p-4 text-white mb-4 outline-none focus:border-blue-500" />
+                <input
+                  type="password"
+                  placeholder="Mission Password"
+                  value={missionPassword}
+                  onChange={(e) => setMissionPassword(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl p-4 text-white mb-4 outline-none focus:border-blue-500"
+                />
                 <div className="flex flex-col gap-3">
                   <button onClick={handleFinalSubmit} className="w-full bg-blue-600 text-white py-4 rounded-xl font-bold hover:bg-blue-500 shadow-lg shadow-blue-900/40 uppercase text-xs tracking-widest">Initiate Launch</button>
                   <button onClick={() => setStep(2)} className="text-slate-500 text-xs uppercase font-bold tracking-widest">Back to Data</button>
