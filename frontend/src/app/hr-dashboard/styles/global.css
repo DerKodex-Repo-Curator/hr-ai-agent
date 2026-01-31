@@ -1,0 +1,285 @@
+/* src/app/hr-dashboard/styles/global.css */
+@import url("https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Fira+Code:wght@400;500&display=swap");
+
+/* Scope all HR Dashboard styles under a specific class */
+.hr-dashboard {
+  font-family: "Outfit", sans-serif;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+}
+
+.hr-dashboard * {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+.hr-dashboard :root {
+  --bg-primary: #0a0e17;
+  --bg-secondary: #111827;
+  --accent-primary: #00d9ff;
+  --accent-secondary: #7c3aed;
+  --accent-success: #10b981;
+  --accent-warning: #f59e0b;
+  --accent-danger: #ef4444;
+  --text-primary: #f9fafb;
+  --text-secondary: #9ca3af;
+  --border: #1f2937;
+}
+
+.hr-dashboard body {
+  font-family: "Outfit", sans-serif;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+}
+
+.hr-dashboard .dashboard-container {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #0a0e17 0%, #111827 50%, #1a2234 100%);
+  padding-bottom: 2rem;
+}
+
+/* Add .hr-dashboard prefix to ALL your CSS selectors */
+.hr-dashboard .loading-screen {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-primary);
+  color: white;
+  gap: 1rem;
+}
+
+.hr-dashboard .header {
+  background: rgba(17, 24, 39, 0.8);
+  backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--border);
+  padding: 1.5rem 2rem;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+:root {
+  --bg-primary: #0a0e17;
+  --bg-secondary: #111827;
+  --accent-primary: #00d9ff;
+  --accent-secondary: #7c3aed;
+  --accent-success: #10b981;
+  --accent-warning: #f59e0b;
+  --accent-danger: #ef4444;
+  --text-primary: #f9fafb;
+  --text-secondary: #9ca3af;
+  --border: #1f2937;
+}
+
+body {
+  font-family: "Outfit", sans-serif;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+}
+
+.dashboard-container {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #0a0e17 0%, #111827 50%, #1a2234 100%);
+  padding-bottom: 2rem;
+}
+
+.loading-screen {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-primary);
+  color: white;
+  gap: 1rem;
+}
+
+.header {
+  background: rgba(17, 24, 39, 0.8);
+  backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--border);
+  padding: 1.5rem 2rem;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.content {
+  max-width: 1600px;
+  margin: 0 auto;
+  padding: 2rem;
+}
+
+.btn {
+  padding: 0.75rem 1.5rem;
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  transition: 0.2s;
+}
+
+.btn:hover {
+  opacity: 0.9;
+  transform: translateY(-1px);
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+  color: white;
+}
+
+.btn-secondary {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text-primary);
+  border: 1px solid var(--border);
+}
+
+.btn-danger {
+  background: var(--accent-danger);
+  color: white;
+}
+
+.btn-success {
+  background: var(--accent-success);
+  color: white;
+}
+
+.job-card {
+  background: rgba(17, 24, 39, 0.6);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 1.5rem;
+  cursor: pointer;
+  transition: all 0.3s;
+  margin-bottom: 1rem;
+}
+
+.job-card:hover {
+  border-color: var(--accent-primary);
+  transform: translateY(-5px);
+}
+
+.status-badge {
+  padding: 0.25rem 0.75rem;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.badge-Applied {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text-primary);
+}
+
+.badge-ATS-Screening {
+  background: rgba(0, 217, 255, 0.2);
+  color: var(--accent-primary);
+}
+
+.badge-AI-Interview {
+  background: rgba(245, 158, 11, 0.2);
+  color: var(--accent-warning);
+}
+
+.badge-Selected {
+  background: rgba(16, 185, 129, 0.2);
+  color: var(--accent-success);
+}
+
+.badge-Rejected {
+  background: rgba(239, 68, 68, 0.2);
+  color: var(--accent-danger);
+}
+
+.candidates-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: rgba(17, 24, 39, 0.6);
+  border-radius: 12px;
+  overflow: hidden;
+  margin-top: 1rem;
+}
+
+.candidates-table th {
+  text-align: left;
+  padding: 1rem;
+  background: rgba(0, 0, 0, 0.3);
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+}
+
+.candidates-table td {
+  padding: 1rem;
+  border-top: 1px solid var(--border);
+}
+
+.candidates-table tr:hover {
+  background: rgba(255, 255, 255, 0.02);
+  cursor: pointer;
+}
+
+.drawer-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  z-index: 900;
+}
+
+.drawer {
+  position: fixed;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: 600px;
+  background: var(--bg-secondary);
+  z-index: 901;
+  padding: 2rem;
+  overflow-y: auto;
+  border-left: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+}
+
+.action-container {
+  max-width: 800px;
+  margin: 0 auto;
+  background: rgba(17, 24, 39, 0.8);
+  padding: 2rem;
+  border-radius: 16px;
+  border: 1px solid var(--border);
+}
+
+.form-input {
+  width: 100%;
+  padding: 1rem;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: white;
+  margin-bottom: 1rem;
+  display: block;
+}
+
+.animate-spin {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
