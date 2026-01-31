@@ -1,6 +1,6 @@
 "use client";
-import React, { useState, useEffect } from 'react';
-import { Search, Rocket, MapPin, Briefcase, Filter, Loader2 } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Search, Rocket, MapPin, Briefcase, Filter, Loader2, X, Activity } from 'lucide-react';
 import ApplyModal from '@/src/components/modals/ApplyModal';
 import Header from '@/src/components/layout/Header';
 import BackgroundDecor from '@/src/components/layout/BackgroundDecor';
@@ -14,17 +14,23 @@ interface Job {
 }
 
 export default function CareerPage() {
-  const [jobs, setJobs] = useState<Job[]>([]);
+  const [allJobs, setAllJobs] = useState<Job[]>([]);
+  const [filteredJobs, setFilteredJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
 
-  // Fetch jobs from the backend environment variable
+  // Filter States
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedDept, setSelectedDept] = useState("All Departments");
+  const positionsRef = useRef<HTMLHeadingElement>(null); // Create the Ref
+
   useEffect(() => {
     async function fetchJobs() {
       try {
         const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/jobs`);
         const data = await response.json();
-        setJobs(data);
+        setAllJobs(data);
+        setFilteredJobs(data);
       } catch (error) {
         console.error("Mission Control: Error fetching orbital roles", error);
       } finally {
@@ -34,50 +40,110 @@ export default function CareerPage() {
     fetchJobs();
   }, []);
 
+  useEffect(() => {
+    const filtered = allJobs.filter((job) => {
+      const matchesSearch = job.role_title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        job.description.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesDept = selectedDept === "All Departments" || job.department === selectedDept;
+      return matchesSearch && matchesDept;
+    });
+    setFilteredJobs(filtered);
+  }, [searchQuery, selectedDept, allJobs]);
+
+  const departments = Array.from(new Set(allJobs.map((j) => j.department)));
+
+  const scrollToPositions = () => {
+    positionsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
   return (
-    // <div className="min-h-screen bg-slate-950 text-slate-200 selection:bg-blue-500/30">
     <div className="min-h-screen bg-slate-950 text-slate-200 selection:bg-blue-500/30 relative">
       <BackgroundDecor />
-      <Header />
-      <main className="max-w-7xl mx-auto px-6 py-12 relative z-10">
-        {/* KPI Stats Section */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-16">
-          {[
-            { label: "Total Openings", val: jobs.length.toString(), icon: "📦" },
-            { label: "Departments", val: new Set(jobs.map(j => j.department)).size.toString(), icon: "🏢" },
-            { label: "Live Missions", val: jobs.length, icon: "🛰️" }
-          ].map((stat, i) => (
-            <div key={i} className="bg-slate-900/40 border border-white/5 p-6 rounded-2xl flex justify-between items-center">
-              <div>
-                <p className="text-slate-500 text-sm font-medium">{stat.label}</p>
-                <p className="text-3xl font-bold mt-1">{stat.val}</p>
+      <Header onJoinCrew={scrollToPositions} />
+
+      <main className="max-w-7xl mx-auto px-6 py-6 relative z-10">
+
+        {/* COMPACT COMMAND BAR (Combined KPIs & Filters) */}
+        <div className="bg-slate-900/60 border border-white/10 rounded-2xl p-4 mb-8 backdrop-blur-md shadow-2xl">
+          <div className="flex flex-col lg:flex-row gap-6 items-center">
+
+            {/* MINI KPI SECTION */}
+            <div className="flex gap-4 border-r border-white/10 pr-6 shrink-0 hidden lg:flex">
+              <div className="text-center">
+                <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Missions</p>
+                <p className="text-xl font-bold text-blue-400">{allJobs.length}</p>
               </div>
-              <div className="text-2xl opacity-50">{stat.icon}</div>
+              <div className="text-center">
+                <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Sectors</p>
+                <p className="text-xl font-bold text-purple-400">{departments.length}</p>
+              </div>
             </div>
-          ))}
+
+            {/* FILTER CONTROLS */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 w-full">
+              <div className="relative">
+                <Search className="absolute left-3 top-2.5 h-3.5 w-3.5 text-slate-500" />
+                <input
+                  type="text"
+                  placeholder="Search keywords..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full bg-slate-950/50 border border-white/10 rounded-lg py-2 pl-9 pr-3 text-xs focus:border-blue-500 outline-none transition-all"
+                />
+              </div>
+
+              <div className="relative">
+                <Briefcase className="absolute left-3 top-2.5 h-3.5 w-3.5 text-slate-500" />
+                <select
+                  value={selectedDept}
+                  onChange={(e) => setSelectedDept(e.target.value)}
+                  className="w-full bg-slate-950/50 border border-white/10 rounded-lg py-2 pl-9 pr-8 text-xs focus:border-blue-500 outline-none appearance-none cursor-pointer"
+                >
+                  <option>All Departments</option>
+                  {departments.map((dept) => (
+                    <option key={dept} value={dept}>{dept}</option>
+                  ))}
+                </select>
+              </div>
+
+              <button
+                onClick={() => { setSearchQuery(""); setSelectedDept("All Departments"); }}
+                className="bg-slate-800 hover:bg-slate-700 text-white font-bold rounded-lg py-2 px-4 text-xs transition-colors flex items-center justify-center gap-2"
+              >
+                <Activity size={14} /> Reset Mission
+              </button>
+            </div>
+          </div>
         </div>
 
-        <h2 className="text-3xl font-bold mb-8 flex items-center gap-3">
-          <Rocket className="text-blue-500" /> Open Positions
+        <h2 className="text-2xl font-bold mb-6 flex items-center gap-2 tracking-tight">
+          <Rocket className="text-blue-500 w-5 h-5" /> Active Orbital Slots
+          {searchQuery && <span className="text-sm font-normal text-slate-500 italic ml-2">({filteredJobs.length} match)</span>}
         </h2>
 
+        {/* LISTING GRID */}
         {loading ? (
           <div className="flex flex-col items-center justify-center py-20 text-slate-500">
-            <Loader2 className="animate-spin mb-4" size={40} />
-            <p className="italic">Scanning deep space for career opportunities...</p>
+            <Loader2 className="animate-spin mb-4" size={32} />
+            <p className="text-sm italic">Scanning coordinates...</p>
+          </div>
+        ) : filteredJobs.length === 0 ? (
+          <div className="text-center py-16 bg-slate-900/40 border border-dashed border-white/10 rounded-2xl">
+            <p className="text-slate-400 text-sm">No missions found in this sector.</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {jobs.map((job) => (
-              <div key={job.id} className="group bg-slate-900/60 border border-white/10 p-8 rounded-[2rem] hover:border-blue-500/50 transition-all hover:shadow-[0_20px_50px_rgba(0,0,0,0.5)]">
-                <h3 className="text-xl font-bold mb-3">{job.role_title}</h3>
-                <div className="flex gap-3 text-xs text-slate-400 mb-6">
-                  <span>{job.department}</span> • <span>{job.location}</span>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {filteredJobs.map((job) => (
+              <div key={job.id} className="group bg-slate-900/60 border border-white/10 p-6 rounded-2xl hover:border-blue-500/40 transition-all hover:-translate-y-1 backdrop-blur-sm">
+                <h3 className="text-lg font-bold mb-2 group-hover:text-blue-400 transition-colors">{job.role_title}</h3>
+                <div className="flex gap-3 text-[11px] text-slate-500 mb-4 font-medium">
+                  <span className="flex items-center gap-1 uppercase tracking-tighter"><Briefcase size={12} /> {job.department}</span>
+                  <span className="flex items-center gap-1 uppercase tracking-tighter"><MapPin size={12} /> {job.location}</span>
                 </div>
-                <p className="text-slate-400 text-sm leading-relaxed mb-8 line-clamp-2">{job.description}</p>
+                <p className="text-slate-400 text-xs leading-relaxed mb-6 line-clamp-2">{job.description}</p>
                 <button
                   onClick={() => setSelectedJob(job)}
-                  className="w-full bg-blue-600 group-hover:bg-blue-500 text-white font-bold py-4 rounded-2xl transition-all flex justify-center items-center gap-2 cursor-pointer"
+                  className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded-xl transition-all flex justify-center items-center gap-2 text-sm shadow-lg shadow-blue-900/20 cursor-pointer"
                 >
                   🚀 Apply Now
                 </button>
@@ -87,7 +153,12 @@ export default function CareerPage() {
         )}
       </main>
 
-      {selectedJob && <ApplyModal job={selectedJob} onClose={() => setSelectedJob(null)} />}
+      {selectedJob && (
+        <ApplyModal
+          job={selectedJob}
+          onClose={() => setSelectedJob(null)}
+        />
+      )}
     </div>
   );
 }

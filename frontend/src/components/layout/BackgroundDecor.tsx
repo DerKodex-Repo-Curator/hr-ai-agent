@@ -16,26 +16,26 @@ const ShootingRocket = ({ delay = 0, duration = 4, startX = "-10vw", startY = "1
       delay: delay, 
       ease: "linear" 
     }}
-    className="fixed text-2xl z-0 pointer-events-none"
+    className="fixed text-3xl z-0 pointer-events-none"
   >
     🚀
-    <div className="absolute -bottom-2 -left-2 w-12 h-4 bg-gradient-to-r from-orange-500/0 to-orange-500/40 blur-md -rotate-45 shadow-[0_0_15px_rgba(249,115,22,0.5)]" />
+    <div className="absolute -bottom-2 -left-2 w-16 h-4 bg-gradient-to-r from-orange-500/0 to-orange-500/40 blur-md -rotate-45 shadow-[0_0_20px_rgba(249,115,22,0.4)]" />
   </motion.div>
 );
 
-const OrbitingSatellite = ({ duration = 20, delay = 0, radius = 200, scale = 1 }) => (
+const OrbitingSatellite = ({ duration = 20, delay = 0, radius = 200, scale = 1, opacity = 0.5 }) => (
   <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none z-0">
     <motion.div
       animate={{ rotate: 360 }}
       transition={{ duration, repeat: Infinity, ease: "linear", delay }}
       style={{ width: radius * 2, height: radius * 2 }}
-      className="relative flex items-center justify-start rounded-full border border-white/5"
+      className="relative flex items-center justify-start rounded-full border border-white/[0.015]"
     >
       <motion.div 
-        style={{ scale }}
-        animate={{ rotate: -360 }} // Counter-rotate so the emoji doesn't spin upside down
+        style={{ scale, opacity }}
+        animate={{ rotate: -360 }} 
         transition={{ duration, repeat: Infinity, ease: "linear", delay }}
-        className="text-lg -ml-3"
+        className="text-4xl -ml-6"
       >
         🛰️
       </motion.div>
@@ -44,38 +44,46 @@ const OrbitingSatellite = ({ duration = 20, delay = 0, radius = 200, scale = 1 }
 );
 
 export default function BackgroundDecor() {
-  // Define rocket variations
   const rockets = [
-    { delay: 2, duration: 4, startX: "-5vw", startY: "90vh" },
-    { delay: 8, duration: 6, startX: "20vw", startY: "110vh" },
-    { delay: 15, duration: 3.5, startX: "-10vw", startY: "120vh" },
-    { delay: 22, duration: 5, startX: "50vw", startY: "110vh" },
+    { delay: 12, duration: 6, startX: "-5vw", startY: "95vh" },
+    { delay: 35, duration: 8, startX: "30vw", startY: "110vh" },
   ];
 
-  // Define satellite variations
+  // High-density orbital constellation
   const satellites = [
-    { radius: 250, duration: 30, delay: 0, scale: 0.7 },
-    { radius: 400, duration: 45, delay: 5, scale: 1 },
-    { radius: 550, duration: 70, delay: 12, scale: 0.8 },
-    { radius: 700, duration: 90, delay: 20, scale: 1.2 },
+    // Inner Orbit
+    { radius: 200, duration: 25, delay: 0, scale: 0.6, opacity: 0.3 },
+    { radius: 300, duration: 35, delay: 5, scale: 0.9, opacity: 0.4 },
+    { radius: 450, duration: 50, delay: 12, scale: 1.1, opacity: 0.35 },
+    
+    // Mid Orbit
+    { radius: 600, duration: 70, delay: 20, scale: 1.5, opacity: 0.25 },
+    { radius: 750, duration: 85, delay: 3, scale: 1.3, opacity: 0.2 },
+    { radius: 900, duration: 110, delay: 15, scale: 2.0, opacity: 0.15 },
+    
+    // Outer/Deep Orbit (Massive structures)
+    { radius: 1100, duration: 140, delay: 8, scale: 2.5, opacity: 0.12 },
+    { radius: 1300, duration: 180, delay: 25, scale: 3.2, opacity: 0.1 },
+    { radius: 1500, duration: 220, delay: 40, scale: 1.8, opacity: 0.08 },
+    { radius: 1750, duration: 280, delay: 10, scale: 2.8, opacity: 0.1 },
+    { radius: 2000, duration: 350, delay: 50, scale: 4.0, opacity: 0.05 }, // Titan Class
+    { radius: 2300, duration: 450, delay: 5, scale: 1.5, opacity: 0.07 },
   ];
 
   return (
     <div className="fixed inset-0 overflow-hidden pointer-events-none select-none z-0">
-      {/* Background Rockets */}
       {rockets.map((r, i) => (
         <ShootingRocket key={`rock-${i}`} {...r} />
       ))}
       
-      {/* Background Satellites */}
       {satellites.map((s, i) => (
         <OrbitingSatellite key={`sat-${i}`} {...s} />
       ))}
       
-      {/* Enhanced Ambient Space Glow */}
-      <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] bg-blue-900/10 blur-[150px] rounded-full" />
-      <div className="absolute bottom-[-20%] right-[-10%] w-[50%] h-[50%] bg-purple-900/10 blur-[150px] rounded-full" />
-      <div className="absolute top-[40%] left-[30%] w-[20%] h-[20%] bg-blue-500/5 blur-[100px] rounded-full" />
+      {/* Dynamic Space Lighting */}
+      <div className="absolute top-[-20%] left-[-10%] w-[70%] h-[70%] bg-blue-900/10 blur-[200px] rounded-full" />
+      <div className="absolute bottom-[-20%] right-[-10%] w-[70%] h-[70%] bg-purple-900/10 blur-[200px] rounded-full" />
+      <div className="absolute top-[30%] left-[20%] w-[30%] h-[30%] bg-blue-400/5 blur-[150px] rounded-full" />
     </div>
   );
 }
