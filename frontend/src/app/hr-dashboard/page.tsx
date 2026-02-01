@@ -39,15 +39,11 @@ export default function HRDashboard() {
 
     useEffect(() => {
         const loadSpecificApplicants = async () => {
-            // Only fetch if we are in the candidates view and have a job ID
             if (currentView === "candidates" && selectedJob?.id) {
                 setIsFetchingApplicants(true);
                 try {
-                    // This calls /jobs/job/{id} which returns the formatted_candidates
                     const data = await fetchApplicants(selectedJob.id);
                     setJobApplicants(data || []);
-
-                    // Also update the global candidates state to keep pipeline counts accurate
                     setCandidates(data || []);
                 } catch (err) {
                     console.error("Telemetry Error: Failed to sync mission specialists:", err);

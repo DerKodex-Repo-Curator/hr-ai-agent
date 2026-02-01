@@ -1,7 +1,7 @@
 // src/app/hr-dashboard/utils/api.ts
 import { Job, Candidate, Interview } from './types';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://hr-ai-agent-backend-1lrx.onrender.com';
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || '';
 
 export const api = {
     async get<T>(endpoint: string): Promise<T> {
