@@ -35,7 +35,7 @@ const CandidateDrawer: React.FC<CandidateDrawerProps> = ({ candidate, onClose, o
                     <div style={{ display: "flex", gap: "0.5rem", marginBottom: "1rem", color: "var(--text-secondary)", alignItems: "center" }}>
                         <LinkIcon size={14} />
                         {candidate.resume_url ? (
-                            <a href={candidate.resume_url} target="_blank" rel="noopener noreferrer" style={{ color: "var(--accent-primary)", textDecoration: "none" }}>
+                            <a href={candidate.resume_url} download={candidate.name} target="_blank" rel="noopener noreferrer" style={{ color: "var(--accent-primary)", textDecoration: "none" }}>
                                 View Resume
                             </a>
                         ) : (
@@ -76,16 +76,16 @@ const CandidateDrawer: React.FC<CandidateDrawerProps> = ({ candidate, onClose, o
                     {candidate.status !== "Rejected" && candidate.status !== "Selected" && (
                         <>
                             {candidate.status !== "AI Interview" && (
-                                <button className="btn btn-secondary" style={{ justifyContent: "center" }} onClick={() => onUpdateStatus(candidate.id, "AI Interview")}>
+                                <button className="btn btn-secondary cursor-pointer" style={{ justifyContent: "center" }} onClick={() => onUpdateStatus(candidate.id, "AI Interview")}>
                                     <Star size={18} /> Move to AI Interview (Auto-Schedule)
                                 </button>
                             )}
 
-                            <button className="btn btn-success" style={{ justifyContent: "center" }} onClick={() => onUpdateStatus(candidate.id, "Selected")}>
+                            <button className="btn btn-success cursor-pointer" style={{ justifyContent: "center" }} onClick={() => onUpdateStatus(candidate.id, "Selected")}>
                                 <UserCheck size={18} /> Select Candidate
                             </button>
 
-                            <button className="btn btn-danger" style={{ justifyContent: "center" }} onClick={onRejectRequest}>
+                            <button className="btn btn-danger cursor-pointer" style={{ justifyContent: "center" }} onClick={onRejectRequest}>
                                 <Trash2 size={18} /> Reject
                             </button>
                         </>

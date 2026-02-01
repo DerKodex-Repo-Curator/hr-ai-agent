@@ -9,25 +9,28 @@ app = FastAPI(
 )
 
 # CORS middleware
+origins = [
+    "http://localhost:3000",    # Your Next.js local development address
+    "http://127.0.0.1:3000",
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Configure properly in production
+    allow_origins=origins,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["*"],  # Allows GET, POST, OPTIONS, etc.
+    allow_headers=["*"],  # Allows all headers
 )
 
 # Include routers
+# app.include_router(jobs.router, prefix="/jobs", tags=["Jobs"])
+# app.include_router(applications.router, prefix="/applications", tags=["Applications"])
 app.include_router(jobs.router)
 app.include_router(applications.router)
 
 @app.get("/")
 def root():
-    return {
-        "message": "Agentic Recruitment API",
-        "status": "running",
-        "docs": "/docs"
-    }
+    return {"message": "Mission Control Online"}
 
 @app.get("/health")
 def health_check():

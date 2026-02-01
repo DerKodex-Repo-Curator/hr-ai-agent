@@ -1,9 +1,10 @@
 "use client";
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, Rocket, MapPin, Briefcase, Filter, Loader2, X, Activity } from 'lucide-react';
+import { Search, Rocket, MapPin, Briefcase, Activity, Loader2, UserCircle } from 'lucide-react';
 import ApplyModal from '@/src/components/modals/ApplyModal';
 import Header from '@/src/components/layout/Header';
 import BackgroundDecor from '@/src/components/layout/BackgroundDecor';
+import { supabase } from '@/src/lib/supabase'; // Ensure this is imported
 
 interface Job {
   id: number;
@@ -18,11 +19,13 @@ export default function CareerPage() {
   const [filteredJobs, setFilteredJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
+  const [showLogin, setShowLogin] = useState(false); // New Login State
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
 
-  // Filter States
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedDept, setSelectedDept] = useState("All Departments");
-  const positionsRef = useRef<HTMLHeadingElement>(null); // Create the Ref
+  const positionsRef = useRef<HTMLHeadingElement>(null);
 
   useEffect(() => {
     async function fetchJobs() {
@@ -56,11 +59,23 @@ export default function CareerPage() {
     positionsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
 
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) alert(error.message);
+    else {
+      setShowLogin(false);
+      window.location.href = "/my-missions"; // Redirect to their dashboard
+    }
+  };
+
   return (
     <div className="min-h-screen bg-slate-950 text-slate-200 selection:bg-blue-500/30 relative">
       <BackgroundDecor />
-      <Header onJoinCrew={scrollToPositions} />
-
+      <Header
+        onJoinCrew={scrollToPositions}
+        onOpenLogin={() => setShowLogin(true)}
+      />
       <main className="max-w-7xl mx-auto px-6 py-6 relative z-10">
 
         {/* COMPACT COMMAND BAR (Combined KPIs & Filters) */}
@@ -68,15 +83,12 @@ export default function CareerPage() {
           <div className="flex flex-col lg:flex-row gap-6 items-center">
 
             {/* MINI KPI SECTION */}
-            <div className="flex gap-4 border-r border-white/10 pr-6 shrink-0 hidden lg:flex">
+            <div className="flex gap-4 border-r border-white/10 pr-6 shrink-0 hidden lg:flex items-center">
               <div className="text-center">
                 <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Missions</p>
                 <p className="text-xl font-bold text-blue-400">{allJobs.length}</p>
               </div>
-              <div className="text-center">
-                <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Sectors</p>
-                <p className="text-xl font-bold text-purple-400">{departments.length}</p>
-              </div>
+              <div className="border-r border-white/10 h-8 mx-2" />
             </div>
 
             {/* FILTER CONTROLS */}
@@ -108,7 +120,7 @@ export default function CareerPage() {
 
               <button
                 onClick={() => { setSearchQuery(""); setSelectedDept("All Departments"); }}
-                className="bg-slate-800 hover:bg-slate-700 text-white font-bold rounded-lg py-2 px-4 text-xs transition-colors flex items-center justify-center gap-2"
+                className="bg-slate-800 hover:bg-slate-700 text-white font-bold rounded-lg py-2 px-4 text-xs transition-colors flex items-center justify-center cursor-pointer gap-2"
               >
                 <Activity size={14} /> Reset Mission
               </button>
@@ -152,6 +164,45 @@ export default function CareerPage() {
           </div>
         )}
       </main>
+      {showLogin && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 backdrop-blur-md bg-black/60">
+          <div className="bg-slate-900 border border-blue-500/30 w-full max-w-md rounded-[2.5rem] p-8 shadow-2xl">
+            <h2 className="text-2xl font-bold text-white mb-2 flex items-center gap-2">
+              <Activity className="text-blue-500" /> Returning Personnel
+            </h2>
+            <p className="text-slate-400 text-xs mb-8 uppercase tracking-widest font-bold">Secure Terminal Access</p>
+
+            <form onSubmit={handleLogin} className="space-y-4">
+              <input
+                type="email"
+                placeholder="Pilot Email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full bg-slate-950 border border-white/10 rounded-xl py-3 px-4 text-sm focus:border-blue-500 outline-none"
+                required
+              />
+              <input
+                type="password"
+                placeholder="Access Key"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full bg-slate-950 border border-white/10 rounded-xl py-3 px-4 text-sm focus:border-blue-500 outline-none"
+                required
+              />
+              <button className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded-xl transition-all uppercase tracking-widest text-xs cursor-pointer">
+                Establish Link
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowLogin(false)}
+                className="w-full text-slate-500 text-[10px] uppercase font-bold tracking-widest mt-4 cursor-pointer"
+              >
+                Abort Connection
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
 
       {selectedJob && (
         <ApplyModal

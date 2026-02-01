@@ -1,6 +1,8 @@
+import { ReactNode } from "react";
+
 // src/app/hr-dashboard/utils/types.ts
 export type JobStatus = "active" | "closed";
-export type CandidateStatus = "Applied" | "ATS Screening" | "AI Interview" | "Selected" | "Rejected";
+export type CandidateStatus = "Applied" | "ATS Screening" | "AI Interview" | "Selected" | "Rejected" | "In Orbit";
 export type InterviewStatus = "scheduled" | "completed" | "cancelled";
 export type View = "jobs" | "interviews" | "create-job" | "job-detail" | "candidates" | "close-job-action" | "reject-action";
 
@@ -13,8 +15,10 @@ export interface PipelineStats {
 }
 
 export interface Job {
+    department: ReactNode;
+    target_shortlist_count: ReactNode;
     id: string;
-    title: string;
+    role_title: string;
     location: string;
     status: JobStatus;
     closing_date?: string;
@@ -33,6 +37,7 @@ export interface CandidateProfile {
 }
 
 export interface Candidate {
+    scheduled_interview_time: string | number | Date;
     id: string;
     name: string;
     email: string;

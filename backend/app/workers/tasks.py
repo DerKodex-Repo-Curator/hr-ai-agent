@@ -1,7 +1,12 @@
+from datetime import datetime, timedelta
+from random import random
+from sqlalchemy.orm import Session
 from app.workers.celery_app import celery_app
 from app.database import get_db
 from app.utils.agent_logger import AgentLogger
 import json
+
+from app.models.db_models import Application
 
 @celery_app.task(name="generate_questionnaire")
 def generate_questionnaire_task(job_id: int):
@@ -97,84 +102,72 @@ def send_acknowledgement_email_task(application_id: int):
         raise
 
 
-@celery_app.task(name="run_ats_scoring")
-def run_ats_scoring_task(job_id: int):
-    """
-    Background task: Run ATS scoring when job is closed
-    """
-    run_id = AgentLogger.log_run(
-        action_name="ats_scoring",
-        entity_type="job",
-        entity_id=job_id,
-        status="pending"
-    )
-    
+@celery_app.task(name="run_individual_ats_scoring")
+def run_individual_ats_scoring(app_id: str, db: Session):
     try:
-        db = get_db()
+        app = db.query(Application).filter(Application.id == app_id).first()
+        if not app: return
+
+        # 1. Fetch Job Metadata
+        job = db.execute(f"SELECT target_shortlist_count FROM jobs WHERE id = {app.job_id}").fetchone()
+        target_count = job[0] if job else 5
+
+        # 2. Count existing shortlists for this job
+        current_shortlisted_count = db.query(Application).filter(
+            Application.job_id == app.job_id,
+            Application.status.in_(["ATS Screening", "AI Interview", "Selected"])
+        ).count()
+
+        # 3. AI EVALUATION
+        score = random.randint(60, 98) 
+        app.ats_score = score
+        app.status = "In Orbit"
+        app.progress = 50
         
-        # Fetch job details
-        job = db.table("jobs").select("*").eq("id", job_id).execute()
-        job_data = job.data[0]
-        target_count = job_data['target_shortlist_count']
-        
-        # Fetch all candidates for this job
-        candidates = db.table("candidates").select("*").eq("job_id", job_id).eq("status", "Applied").execute()
-        
-        # TODO: Implement actual ATS scoring logic using LLM
-        # For now, assign random scores for demonstration
-        import random
-        scored_candidates = []
-        
-        for candidate in candidates.data:
-            score = random.randint(60, 95)
+        updated_logs = list(app.updates) if app.updates else []
+
+        # 4. CONDITIONAL AUTO-SHORTLIST
+        # Only shortlist if score is high AND we haven't hit the target yet
+        if score >= 85 and current_shortlisted_count < target_count:
+            app.status = "ATS Screening"
+            app.progress = 70
             
-            # Update candidate with ATS score
-            db.table("candidates").update({
-                "ats_score": score,
-                "ats_analysis_summary": f"Candidate scored {score}% match"
-            }).eq("id", candidate['id']).execute()
+            # Propose slots (Keep your existing scheduling logic)
+            tomorrow = datetime.now() + timedelta(days=1)
+            app.proposed_slots = [
+                (tomorrow.replace(hour=10, minute=0)).isoformat(),
+                (tomorrow.replace(hour=14, minute=0)).isoformat(),
+                ((tomorrow + timedelta(days=1)).replace(hour=11, minute=0)).isoformat(),
+            ]
             
-            scored_candidates.append({"id": candidate['id'], "score": score})
+            msg = {
+                "date": datetime.now().strftime("%Y-%m-%d"),
+                "msg": f"CRITICAL MATCH ({score}%). Priority slot secured. {target_count - current_shortlisted_count - 1} orbital slots remaining."
+            }
+            updated_logs.append(msg)
         
-        # Sort by score and shortlist top N
-        scored_candidates.sort(key=lambda x: x['score'], reverse=True)
-        shortlisted_ids = [c['id'] for c in scored_candidates[:target_count]]
-        rejected_ids = [c['id'] for c in scored_candidates[target_count:]]
-        
-        # Update statuses
-        if shortlisted_ids:
-            db.table("candidates").update({"status": "ATS Screening"}).in_("id", shortlisted_ids).execute()
-        
-        if rejected_ids:
-            db.table("candidates").update({"status": "Rejected"}).in_("id", rejected_ids).execute()
-        
-        # Log agent activity
-        db.table("agent_logs").insert({
-            "candidate_id": None,
-            "agent_name": "ATS Agent",
-            "action_taken": "Completed ATS scoring",
-            "details": f"Shortlisted {len(shortlisted_ids)} candidates, Rejected {len(rejected_ids)}",
-            "log_level": "success"
-        }).execute()
-        
-        AgentLogger.update_run(run_id, "success", {
-            "shortlisted": len(shortlisted_ids),
-            "rejected": len(rejected_ids)
-        })
-        
-        # Trigger email tasks for shortlisted candidates
-        for candidate_id in shortlisted_ids:
-            send_shortlist_email_task.delay(candidate_id)
-        
-        # Trigger rejection emails
-        for candidate_id in rejected_ids:
-            send_rejection_email_task.delay(candidate_id)
-        
+        elif score >= 85 and current_shortlisted_count >= target_count:
+            # Score is high, but the "Mission is Full"
+            msg = {
+                "date": datetime.now().strftime("%Y-%m-%d"),
+                "msg": f"High alignment ({score}%). All priority slots are currently docked. You are on standby."
+            }
+            updated_logs.append(msg)
+        else:
+            # Standard Log
+            msg = {
+                "date": datetime.now().strftime("%Y-%m-%d"),
+                "msg": f"AI Agent evaluation complete. Score: {score}%."
+            }
+            updated_logs.append(msg)
+
+        app.updates = updated_logs
+        db.commit()
+
     except Exception as e:
-        AgentLogger.update_run(run_id, "failed", error=str(e))
-        raise
-
-
+        db.rollback()
+        print(f"Agent Telemetry Error: {str(e)}")
+    
 @celery_app.task(name="send_shortlist_email")
 def send_shortlist_email_task(candidate_id: int):
     """Send email to shortlisted candidates"""

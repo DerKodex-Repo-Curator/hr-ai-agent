@@ -9,10 +9,11 @@ interface JobCardProps {
 }
 
 const JobCard: React.FC<JobCardProps> = ({ job, onClick }) => {
+    console.log(job);
     return (
         <div className="job-card" onClick={onClick}>
             <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "0.5rem" }}>
-                <h3 style={{ fontSize: "1.2rem", fontWeight: "bold" }}>{job.title}</h3>
+                <h3 style={{ fontSize: "1.2rem", fontWeight: "bold" }}>{job.role_title}</h3>
                 <span className={`status-badge ${job.status}`}>{job.status}</span>
             </div>
             <div style={{ color: "var(--text-secondary)", fontSize: "0.9rem", marginBottom: "0.5rem" }}>

@@ -1,89 +1,106 @@
-from fastapi import APIRouter, HTTPException, BackgroundTasks
+from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
+from sqlalchemy.orm import Session
+from sqlalchemy import desc
 from typing import List
-from app.models.job import JobCreate, JobResponse, JobCloseRequest
+
 from app.database import get_db
-from app.workers.tasks import generate_questionnaire_task, run_ats_scoring_task
+from app.models.db_models import Job, Application
+from app.models.job import JobCreate, JobResponse, JobCloseRequest
+from app.workers.tasks import generate_questionnaire_task
 
 router = APIRouter(prefix="/jobs", tags=["Jobs"])
 
-@router.post("/", response_model=JobResponse, status_code=201)
-def create_job(job: JobCreate, background_tasks: BackgroundTasks):
-    """
-    Create a new job posting.
-    Triggers: Questionnaire generation in background.
-    """
-    db = get_db()
+@router.get("/job/{job_id}")
+async def get_job_applicants(job_id: int, db: Session = Depends(get_db)):
+    # Order by ATS score descending so the best candidates are at the top
+    results = db.query(Application).filter(Application.job_id == job_id).order_by(Application.ats_score.desc()).all()
     
-    # Insert job
-    result = db.table("jobs").insert({
-        "role_title": job.role_title,
-        "department": job.department,
-        "location": job.location,
-        "description": job.description,
-        "target_shortlist_count": job.target_shortlist_count,
-        "closing_date": job.closing_date.isoformat() if job.closing_date else None,
-        "status": "Open"
-    }).execute()
-    
-    job_data = result.data[0]
-    
-    # Trigger background task: Generate questionnaire
-    generate_questionnaire_task.delay(job_data['id'])
-    
-    return job_data
+    formatted_candidates = []
+    for app in results:
+        formatted_candidates.append({
+            "id": str(app.id),
+            "name": app.full_name,
+            "email": app.email,
+            "phone": app.phone,
+            "status": app.status,
+            "resume_url": app.resume_url,
+            "ats_score": app.ats_score or 0,
+            "interview_score": app.interview_score,
+            "ats_reasons": app.ats_reasons,
+            "scheduled_interview_time": app.scheduled_interview_time.isoformat() if app.scheduled_interview_time else None,
+            "updates": app.updates or [],
+            "profile": {
+                "experience": app.total_experience_years,
+                "skills": (app.skills or "").split(",") if app.skills else [],
+                "location": "Remote",
+                "summary": app.summary
+            }
+        })
+    return formatted_candidates
 
+@router.post("/", response_model=JobResponse, status_code=201)
+def create_job(job_in: JobCreate, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
+    """
+    Create a new job posting using SQLAlchemy.
+    """
+    # Create the Job object
+    new_job = Job(
+        role_title=job_in.role_title,
+        department=job_in.department,
+        location=job_in.location,
+        description=job_in.description,
+        target_shortlist_count=job_in.target_shortlist_count,
+        closing_date=job_in.closing_date,
+        status="Open"
+    )
+    
+    db.add(new_job)
+    db.commit()
+    db.refresh(new_job)
+    
+    # Trigger background task
+    generate_questionnaire_task.delay(new_job.id)
+    
+    return new_job
 
 @router.get("/", response_model=List[JobResponse])
-def list_jobs(status: str = None):
+def list_jobs(status: str = None, db: Session = Depends(get_db)):
     """
-    List all jobs. Optional filter by status.
+    List all jobs with SQLAlchemy query filtering.
     """
-    db = get_db()
-    
-    query = db.table("jobs").select("*")
+    query = db.query(Job)
     
     if status:
-        query = query.eq("status", status)
+        query = query.filter(Job.status == status)
     
-    result = query.execute()
-    return result.data
-
+    return query.order_by(desc(Job.id)).all()
 
 @router.get("/{job_id}", response_model=JobResponse)
-def get_job_detail(job_id: int):
+def get_job_detail(job_id: int, db: Session = Depends(get_db)):
     """
-    Get details of a specific job.
+    Get specific job details.
     """
-    db = get_db()
+    job = db.query(Job).filter(Job.id == job_id).first()
     
-    result = db.table("jobs").select("*").eq("id", job_id).execute()
-    
-    if not result.data:
+    if not job:
         raise HTTPException(status_code=404, detail="Job not found")
     
-    return result.data[0]
-
+    return job
 
 @router.post("/{job_id}/close")
-def close_job(job_id: int, request: JobCloseRequest):
+def close_job(job_id: int, request: JobCloseRequest, db: Session = Depends(get_db)):
     """
-    Close a job posting.
-    Triggers: ATS scoring, shortlisting, and email notifications.
+    Close job and trigger the Agentic scoring task.
     """
-    db = get_db()
+    job = db.query(Job).filter(Job.id == job_id).first()
     
-    # Update job status
-    result = db.table("jobs").update({
-        "status": "Closed"
-    }).eq("id", job_id).execute()
-    
-    if not result.data:
+    if not job:
         raise HTTPException(status_code=404, detail="Job not found")
     
-    # Trigger background task: Run ATS scoring
-    run_ats_scoring_task.delay(job_id)
+    job.status = "Closed"
+    db.commit()
     
     return {
-        "message": "Job closed successfully. ATS scoring and candidate notifications in progress.",
+        "message": "Job closed. AI Agent scoring started.",
         "job_id": job_id
     }

@@ -13,24 +13,24 @@ interface JobDetailViewProps {
 const JobDetailView: React.FC<JobDetailViewProps> = ({ job, onBack, onViewCandidates, onCloseJob }) => {
     return (
         <div>
-            <button className="btn btn-secondary" onClick={onBack} style={{ marginBottom: "1rem" }}>
+            <button className="btn btn-secondary cursor-pointer" onClick={onBack} style={{ marginBottom: "1rem" }}>
                 <ChevronRight size={16} style={{ transform: "rotate(180deg)" }} /> Back
             </button>
             <div className="action-container" style={{ maxWidth: "100%" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                     <div>
-                        <h1 style={{ fontSize: "2rem", marginBottom: "0.5rem" }}>{job.title}</h1>
+                        <h1 style={{ fontSize: "2rem", marginBottom: "0.5rem" }}>{job.role_title}</h1>
                         <div style={{ color: "var(--text-secondary)" }}>{job.location}</div>
                     </div>
                     <span className={`status-badge ${job.status}`} style={{ fontSize: "1rem" }}>{job.status}</span>
                 </div>
 
                 <div style={{ marginTop: "2rem", display: "flex", gap: "1rem" }}>
-                    <button className="btn btn-primary" onClick={onViewCandidates}>
-                        <Users size={18} /> View Candidates
+                    <button className="btn btn-primary cursor-pointer" onClick={onViewCandidates}>
+                        <Users size={18} /> View Applicants
                     </button>
                     {job.status === "active" && (
-                        <button className="btn btn-secondary" onClick={onCloseJob}>
+                        <button className="btn btn-secondary cursor-pointer" onClick={onCloseJob}>
                             <CheckCircle size={18} /> Close & Shortlist
                         </button>
                     )}

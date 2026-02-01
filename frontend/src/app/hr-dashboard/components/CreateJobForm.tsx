@@ -64,8 +64,8 @@ const CreateJobForm: React.FC<CreateJobFormProps> = ({ onBack, onSuccess }) => {
             </div>
 
             <div style={{ display: "flex", justifyContent: "flex-end", gap: "1rem", marginTop: "1.5rem" }}>
-                <button className="btn btn-secondary" onClick={onBack}>Cancel</button>
-                <button className="btn btn-primary" onClick={() => onSuccess(formData)}>Create Job</button>
+                <button className="btn btn-secondary cursor-pointer" onClick={onBack}>Cancel</button>
+                <button className="btn btn-primary cursor-pointer" onClick={() => onSuccess(formData)}>Create Job</button>
             </div>
         </div>
     );

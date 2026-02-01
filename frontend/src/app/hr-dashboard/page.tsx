@@ -18,7 +18,8 @@ import {
     createJob,
     updateCandidate,
     createInterview,
-    updateJob
+    updateJob,
+    fetchApplicants
 } from "./utils/api";
 import { findNextAvailableSlot } from "./utils/scheduling";
 import { Job, Candidate, Interview, CreateJobData, View, ActionContext, CandidateStatus } from "./utils/types";
@@ -33,56 +34,70 @@ export default function HRDashboard() {
     const [candidates, setCandidates] = useState<Candidate[]>([]);
     const [interviews, setInterviews] = useState<Interview[]>([]);
     const [loading, setLoading] = useState(true);
+    const [jobApplicants, setJobApplicants] = useState<Candidate[]>([]);
+    const [isFetchingApplicants, setIsFetchingApplicants] = useState(false);
 
     useEffect(() => {
-        const fetchData = async () => {
-            setLoading(true);
-            try {
-                // const [jobsData, candidatesData, interviewsData] = await Promise.all([
-                //     fetchJobs(),
-                //     fetchCandidates(),
-                //     fetchInterviews()
-                // ]);
-                // setJobs(jobsData || []);
-                // setCandidates(candidatesData || []);
-                // setInterviews(interviewsData || []);
-                const [jobsData,] = await Promise.all([
-                    fetchJobs(),
-                ]);
-                setJobs(jobsData || []);
-                setCandidates([]);
-                setInterviews([]);
-            } catch (err) {
-                console.error("Data loading failed:", err);
-                setJobs([]);
-                setCandidates([]);
-                setInterviews([]);
-            } finally {
-                setLoading(false);
+        const loadSpecificApplicants = async () => {
+            // Only fetch if we are in the candidates view and have a job ID
+            if (currentView === "candidates" && selectedJob?.id) {
+                setIsFetchingApplicants(true);
+                try {
+                    // This calls /jobs/job/{id} which returns the formatted_candidates
+                    const data = await fetchApplicants(selectedJob.id);
+                    setJobApplicants(data || []);
+
+                    // Also update the global candidates state to keep pipeline counts accurate
+                    setCandidates(data || []);
+                } catch (err) {
+                    console.error("Telemetry Error: Failed to sync mission specialists:", err);
+                    setJobApplicants([]);
+                } finally {
+                    setIsFetchingApplicants(false);
+                }
             }
         };
-        fetchData();
-    }, []);
+
+        loadSpecificApplicants();
+    }, [currentView, selectedJob?.id]);
 
     useEffect(() => {
-        if (jobs.length > 0) {
-            setJobs((prev) =>
-                prev.map((job) => {
-                    const jobCandidates = candidates.filter((c) => c.job_id === job.id);
-                    return {
-                        ...job,
-                        pipeline: {
-                            applied: jobCandidates.filter((c) => c.status === "Applied").length,
-                            ats_screening: jobCandidates.filter((c) => c.status === "ATS Screening").length,
-                            ai_interview: jobCandidates.filter((c) => c.status === "AI Interview").length,
-                            selected: jobCandidates.filter((c) => c.status === "Selected").length,
-                            rejected: jobCandidates.filter((c) => c.status === "Rejected").length,
-                        },
-                    };
-                })
-            );
+    const fetchData = async () => {
+        setLoading(true);
+        try {
+            const jobsData = await fetchJobs();
+            setJobs(jobsData || []);
+            setCandidates([]);
+            setInterviews([]); 
+        } catch (err) {
+            console.error("Data loading failed:", err);
+            setJobs([]);
+        } finally {
+            setLoading(false);
         }
-    }, [candidates.length]);
+    };
+    fetchData();
+}, []);
+
+    useEffect(() => {
+    if (jobs.length > 0) {
+        setJobs((prev) =>
+            prev.map((job) => {
+                const jobCandidates = candidates.filter((c) => Number(c.job_id) === Number(job.id));
+                return {
+                    ...job,
+                    pipeline: {
+                        applied: jobCandidates.filter((c) => c.status === "In Orbit").length,
+                        ats_screening: jobCandidates.filter((c) => c.status === "ATS Screening").length,
+                        ai_interview: jobCandidates.filter((c) => c.status === "AI Interview").length,
+                        selected: jobCandidates.filter((c) => c.status === "Selected").length,
+                        rejected: jobCandidates.filter((c) => c.status === "Rejected").length,
+                    },
+                };
+            })
+        );
+    }
+}, [candidates]);
 
     const handleCreateJob = async (newJobData: CreateJobData) => {
         try {
@@ -102,7 +117,7 @@ export default function HRDashboard() {
 
     const handleUpdateStatus = async (candidateId: string, newStatus: CandidateStatus, reason: string | null = null) => {
         try {
-            setCandidates((prev) =>
+            setJobApplicants((prev) =>
                 prev.map((c) =>
                     c.id === candidateId
                         ? { ...c, status: newStatus, ...(reason && { reject_reason: reason }) }
@@ -110,9 +125,7 @@ export default function HRDashboard() {
                 )
             );
 
-            await updateCandidate(candidateId, { status: newStatus, reject_reason: reason });
-
-            const candidate = candidates.find((c) => c.id === candidateId);
+            await updateCandidate(candidateId, { status: newStatus, reject_reason: reason }); const candidate = candidates.find((c) => c.id === candidateId);
             const job = jobs.find((j) => j.id === candidate?.job_id);
 
             if (newStatus === "AI Interview" && job && candidate) {
@@ -126,7 +139,7 @@ export default function HRDashboard() {
                     id: Date.now().toString(),
                     candidate_id: candidate.id,
                     candidate_name: candidate.name,
-                    job_title: job.title,
+                    job_title: job.role_title,
                     scheduled_time: slot,
                     duration: job.interview_duration || 60,
                     status: "scheduled",
@@ -137,6 +150,8 @@ export default function HRDashboard() {
                     const createdInterview = await createInterview(newInterview);
                     setInterviews((prev) => [...prev, createdInterview]);
                     alert(`Auto-Scheduled Interview for ${candidate.name}\nDate: ${new Date(slot).toLocaleString()}`);
+                    const freshData = await fetchApplicants(job.id);
+                    setJobApplicants(freshData);
                 } catch (err) {
                     console.error("Scheduling failed", err);
                 }
@@ -197,9 +212,9 @@ export default function HRDashboard() {
                             <Activity className="text-accent-primary" /> HR Command Center
                         </div>
                         <nav style={{ display: "flex", gap: "0.5rem" }}>
-                            <button className={`btn btn-secondary ${currentView === "jobs" ? "active" : ""}`} onClick={() => setCurrentView("jobs")}>Jobs</button>
-                            <button className={`btn btn-secondary ${currentView === "interviews" ? "active" : ""}`} onClick={() => setCurrentView("interviews")}>Interviews</button>
-                            <button className="btn btn-primary" onClick={() => setCurrentView("create-job")}><Plus size={16} /> New Job</button>
+                            <button className={`btn btn-secondary cursor-pointer ${currentView === "jobs" ? "active" : ""}`} onClick={() => setCurrentView("jobs")}>Jobs</button>
+                            <button className={`btn btn-secondary cursor-pointer ${currentView === "interviews" ? "active" : ""}`} onClick={() => setCurrentView("interviews")}>Interviews</button>
+                            <button className="btn btn-primary cursor-pointer" onClick={() => setCurrentView("create-job")}><Plus size={16} /> New Job</button>
                         </nav>
                     </div>
                 </header>
@@ -230,9 +245,12 @@ export default function HRDashboard() {
                     )}
                     {currentView === "candidates" && selectedJob && (
                         <CandidatesView
-                            candidates={getJobCandidates(selectedJob.id)}
+                            candidates={jobApplicants} // Using the live-fetched applicants
                             job={selectedJob}
-                            onBack={() => setCurrentView("job-detail")}
+                            onBack={() => {
+                                setCurrentView("job-detail");
+                                setJobApplicants([]); // Clear state on exit
+                            }}
                             onSelectCandidate={setSelectedCandidate}
                         />
                     )}
