@@ -32,12 +32,12 @@ export const api = {
 };
 
 // Helper functions for specific endpoints
-export const fetchJobs = () => api.get<Job[]>("/jobs");
+export const fetchJobs = () => api.get<Job[]>("/jobs/");
 export const fetchApplicants = (jobId: string | number) => 
     api.get<Candidate[]>(`/jobs/job/${jobId}`);
 export const fetchCandidates = () => api.get<Candidate[]>("/applications/all");
 export const fetchInterviews = () => api.get<Interview[]>("/interviews");
-export const createJob = (data: any) => api.post<Job>("/jobs", data);
+export const createJob = (data: any) => api.post<Job>("/jobs/", data);
 export const updateCandidate = (id: string, data: any) => api.patch(`/candidates/${id}`, data);
 export const createInterview = (data: Interview) => api.post<Interview>("/interviews", data);
 export const updateJob = (id: string, data: any) => api.patch(`/jobs/${id}`, data);

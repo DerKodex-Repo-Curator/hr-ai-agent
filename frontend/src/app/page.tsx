@@ -30,7 +30,7 @@ export default function CareerPage() {
   useEffect(() => {
     async function fetchJobs() {
       try {
-        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/jobs`);
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/jobs/`);
         const data = await response.json();
         setAllJobs(data);
         setFilteredJobs(data);

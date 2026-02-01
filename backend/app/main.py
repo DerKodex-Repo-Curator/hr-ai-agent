@@ -8,11 +8,13 @@ app = FastAPI(
     version="1.0.0"
 )
 
+app = FastAPI(redirect_slashes=False)
+
 # CORS middleware
 origins = [
     "http://localhost:3000",    # Your Next.js local development address
     "http://127.0.0.1:3000",
-    "https://hr-ai-agent-i437z7h6v-joel-eldho.vercel.app",
+    "https://hr-ai-agent-per01f79c-joel-eldho.vercel.app",
 ]
 
 app.add_middleware(
