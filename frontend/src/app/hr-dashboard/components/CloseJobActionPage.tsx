@@ -37,7 +37,7 @@ const CloseJobActionPage: React.FC<CloseJobActionPageProps> = ({ job, candidates
                     id: Date.now().toString(),
                     candidate_id: cid,
                     candidate_name: candidate.name,
-                    job_title: job.title,
+                    job_title: job.role_title,
                     scheduled_time: slot,
                     duration: job.interview_duration || 60,
                     status: "scheduled",

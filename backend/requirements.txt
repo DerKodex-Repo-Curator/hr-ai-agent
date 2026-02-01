@@ -10,3 +10,5 @@ supabase
 python-dotenv
 celery
 redis
+sqlalchemy
+psycopg2
