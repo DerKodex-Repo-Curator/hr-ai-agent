@@ -1,9 +1,9 @@
 from uuid import UUID
-from app.workers.tasks import run_individual_ats_scoring
-from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
+from app.workers.tasks import run_ats_agent_workflow, run_individual_ats_scoring
+from fastapi import APIRouter, Depends, File, Form, HTTPException, BackgroundTasks, UploadFile
 from sqlalchemy.orm import Session
 from sqlalchemy.orm.attributes import flag_modified
-from typing import List
+from typing import List, Union
 from datetime import datetime, timedelta
 
 from app.models.application import ApplicationCreate, ApplicationInDashboard, ApplicationResponse
@@ -12,7 +12,31 @@ from app.models.db_models import Application
 from app.auth import get_current_user 
 from sqlalchemy.orm import joinedload
 
+from app.utils.parser import parse_resume_to_text
+from app.workers.ai_agent import analyze_mission_specialist
+
+from pydantic import BaseModel
+from typing import List, Optional
+
 router = APIRouter(prefix="/applications", tags=["Applications"])
+
+class ApplicationCreate(BaseModel):
+    job_id: int
+    full_name: str
+    email: str
+    phone: Optional[str] = ""
+    education: Optional[str] = ""
+    # Use Union to handle both a single string or a list of strings
+    skills: Union[str, List[str]] = "" 
+    total_experience_years: Optional[str] = ""
+    summary: Optional[str] = ""
+    github_url: Optional[str] = ""
+    linkedin_url: Optional[str] = ""
+    resume_url: str
+    # These are in your payload, so we must allow them even if we don't use them here
+    ats_score: Optional[int] = 0
+    ats_reasons: Optional[List[str]] = []
+    user_id: Optional[str] = None
 
 @router.post("/apply", response_model=ApplicationResponse)
 async def create_application(
@@ -22,6 +46,11 @@ async def create_application(
     user = Depends(get_current_user) 
 ):
     try:
+
+        formatted_skills = payload.skills
+        if isinstance(payload.skills, list):
+            formatted_skills = ", ".join(payload.skills)
+
         new_app = Application(
             user_id=user.id, 
             job_id=payload.job_id,
@@ -29,12 +58,12 @@ async def create_application(
             email=payload.email,
             phone=payload.phone,
             education=payload.education,
-            skills=payload.skills,
+            skills=formatted_skills,
             total_experience_years=payload.total_experience_years,
             summary=payload.summary,
             github_url=payload.github_url,
             linkedin_url=payload.linkedin_url,
-            resume_url=payload.resume_url,
+            resume_url=payload.resume_url, 
             status="In Orbit",
             progress=30,
             updates=[{
@@ -47,16 +76,15 @@ async def create_application(
         db.commit()
         db.refresh(new_app)
 
-        # 2. Trigger AI Agent Task
-        background_tasks.add_task(run_individual_ats_scoring, str(new_app.id))
+        background_tasks.add_task(run_ats_agent_workflow, str(new_app.id), db, payload.resume_url)
 
         return new_app
 
     except Exception as e:
         db.rollback()
+        print(f"Deployment Error: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Mission launch failed: {str(e)}")
     
-
 @router.get("/my-missions")
 async def get_my_missions(
     db: Session = Depends(get_db),
@@ -108,6 +136,16 @@ async def get_mission_logs(
         "role": mission.job.role_title if mission.job else "Unknown Specialist",
         "logs": mission.updates or []
     }
+
+@router.post("/parse_resume")
+async def parse_resume_endpoint(file: UploadFile = File(...)):
+    pdf_bytes = await file.read()
+    
+    resume_text = parse_resume_to_text(pdf_bytes)
+    
+    analysis = analyze_mission_specialist(resume_text, "General technical role extraction")
+    
+    return analysis
     
 @router.post("/{app_id}/confirm-slot")
 async def confirm_mission_slot(app_id: str, payload: dict, db: Session = Depends(get_db)):

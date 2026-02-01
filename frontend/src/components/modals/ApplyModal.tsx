@@ -35,6 +35,7 @@ export default function ApplyModal({ job, onClose }: { job: any, onClose: () => 
       let authData;
       let session;
 
+      // 1. Handle Authentication
       if (!isLoggedIn) {
         const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
           email: formData.email,
@@ -62,6 +63,7 @@ export default function ApplyModal({ job, onClose }: { job: any, onClose: () => 
 
       if (!session) throw new Error("Could not verify orbital credentials.");
 
+      // 2. Mission Launch (Standard JSON POST)
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/applications/apply`, {
         method: 'POST',
         headers: {
@@ -70,13 +72,17 @@ export default function ApplyModal({ job, onClose }: { job: any, onClose: () => 
         },
         body: JSON.stringify({
           ...formData,
-          user_id: authData.user?.id,
-          job_id: job.id
+          job_id: job.id,
+          user_id: authData.user?.id
         })
       });
 
-      if (!response.ok) throw new Error("FastAPI telemetry sync failed");
+      if (!response.ok) {
+        const errorDetail = await response.json();
+        throw new Error(errorDetail.detail || "FastAPI telemetry sync failed");
+      }
 
+      // Success Sequence
       setTimeout(() => {
         window.location.href = "/my-missions";
       }, 4000);
@@ -94,34 +100,47 @@ export default function ApplyModal({ job, onClose }: { job: any, onClose: () => 
 
     setIsParsing(true);
     try {
-      /* // --- PRODUCTION READY CODE ---
-      const publicUrl = await uploadResume(file);
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/parse_resume`, { method: 'POST', body: file });
-      const parsedData = await response.json();
-      setFormData(prev => ({ ...prev, ...parsedData, resume_url: publicUrl }));
-      setStep(2);
-      */
+      // 1. Storage Docking (Supabase)
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Math.random()}.${fileExt}`;
+      const filePath = `resumes/${fileName}`;
 
-      // --- DEMO MODE CODE ---
-      setTimeout(() => {
-        const mockParsedData = {
-          "full_name": "Jonah Janar Ji",
-          "email": "jona.janar@example.com",
-          "phone": "+971 50 123 4567",
-          "education": "Master of Business Administration (MBA), Focus on Tech Management",
-          "total_experience_years": "5",
-          "skills": "React, Next.js, FastAPI, PostgreSQL, Project Management, Python",
-          "summary": "Experienced professional with a background in engineering and business administration. Specialized in building scalable web applications.",
-          "github_url": "https://github.com/jona",
-          "linkedin_url": "https://linkedin.com/in/jona",
-          "resume_url": "https://vunwdklvoxohyaqcqluw.supabase.co/storage/v1/object/public/agency/demo.pdf"
-        };
-        setFormData(prev => ({ ...prev, ...mockParsedData }));
-        setIsParsing(false);
-        setStep(2);
-      }, 2000);
-    } catch (err) {
-      console.error("Mission Control Error:", err);
+      const { error: uploadError } = await supabase.storage
+        .from('agency')
+        .upload(filePath, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('agency')
+        .getPublicUrl(filePath);
+
+      // 2. AI Telemetry Extraction (FastAPI)
+      const parserFormData = new FormData();
+      parserFormData.append('file', file);
+
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/applications/parse_resume`, {
+        method: 'POST',
+        body: parserFormData
+      });
+
+      if (!response.ok) throw new Error("AI Parsing Engine failed to respond.");
+
+      const parsedData = await response.json();
+
+      // 3. Sync State
+      setFormData(prev => ({
+        ...prev,
+        ...parsedData,
+        resume_url: publicUrl
+      }));
+
+      setIsParsing(false);
+      setStep(2);
+
+    } catch (err: any) {
+      console.error("Mission Control Error:", err.message);
+      alert("Parsing Failed: " + err.message);
       setIsParsing(false);
     }
   };
@@ -167,78 +186,198 @@ export default function ApplyModal({ job, onClose }: { job: any, onClose: () => 
             )}
 
             {step === 2 && (
-              <motion.div key="step2" initial={{ x: 50, opacity: 0 }} animate={{ x: 0, opacity: 1 }} className="h-full flex flex-col justify-center">
-                <h2 className="text-xl font-bold text-white mb-1 flex items-center gap-2"><CheckCircle className="text-blue-500" size={20} /> Verify Mission Profile</h2>
-                <p className="text-slate-400 text-xs mb-6 italic">AI has auto-filled these coordinates. Confirm before final launch.</p>
+              <motion.div
+                key="step2"
+                initial={{ x: 50, opacity: 0 }}
+                animate={{ x: 0, opacity: 1 }}
+                className="h-full flex flex-col justify-center"
+              >
+                <div className="mb-6">
+                  <h2 className="text-xl font-black text-white uppercase tracking-tighter flex items-center gap-2">
+                    <div className="p-1 bg-blue-500/20 rounded-md">
+                      <CheckCircle className="text-blue-500" size={18} />
+                    </div>
+                    Verify Mission Profile
+                  </h2>
+                  <p className="text-slate-500 text-[10px] font-bold uppercase tracking-[0.2em] mt-1 italic">
+                    Telemetry Synchronized. Confirm coordinates.
+                  </p>
+                </div>
 
-                <div className="grid grid-cols-2 gap-4 flex-1 overflow-y-auto pr-2 custom-scrollbar">
+                {/* SCROLLABLE FORM AREA */}
+                <div className="grid grid-cols-2 gap-x-4 gap-y-5 flex-1 overflow-y-auto pr-3 custom-scrollbar max-h-[400px]">
+
+                  {/* FULL NAME */}
                   <div className="col-span-1 space-y-1">
-                    <label className="text-[9px] text-slate-500 font-bold uppercase tracking-widest ml-1">Full Name</label>
-                    <input value={formData.full_name} onChange={e => setFormData({ ...formData, full_name: e.target.value })} className="w-full bg-slate-950 border border-slate-800 p-2.5 rounded-xl text-white text-sm" />
+                    <label className="text-[9px] text-blue-500 font-black uppercase tracking-widest ml-1">Full Name</label>
+                    <input
+                      value={formData.full_name}
+                      onChange={e => setFormData({ ...formData, full_name: e.target.value })}
+                      className="w-full bg-slate-900/50 border border-white/10 p-3 rounded-xl text-white text-sm focus:border-blue-500 focus:outline-none transition-all"
+                    />
                   </div>
+
+                  {/* EMAIL */}
                   <div className="col-span-1 space-y-1">
-                    <label className="text-[9px] text-slate-500 font-bold uppercase tracking-widest ml-1">Email</label>
-                    <input value={formData.email} onChange={e => setFormData({ ...formData, email: e.target.value })} className="w-full bg-slate-950 border border-slate-800 p-2.5 rounded-xl text-white text-sm" />
+                    <label className="text-[9px] text-blue-500 font-black uppercase tracking-widest ml-1">Email</label>
+                    <input
+                      value={formData.email}
+                      onChange={e => setFormData({ ...formData, email: e.target.value })}
+                      className="w-full bg-slate-900/50 border border-white/10 p-3 rounded-xl text-white text-sm focus:border-blue-500 focus:outline-none transition-all"
+                    />
                   </div>
+
+                  {/* PHONE */}
                   <div className="col-span-1 space-y-1">
-                    <label className="text-[9px] text-slate-500 font-bold uppercase tracking-widest ml-1">Phone</label>
-                    <input value={formData.phone} onChange={e => setFormData({ ...formData, phone: e.target.value })} className="w-full bg-slate-950 border border-slate-800 p-2.5 rounded-xl text-white text-sm" />
+                    <label className="text-[9px] text-blue-500 font-black uppercase tracking-widest ml-1">Phone</label>
+                    <input
+                      value={formData.phone}
+                      onChange={e => setFormData({ ...formData, phone: e.target.value })}
+                      className="w-full bg-slate-900/50 border border-white/10 p-3 rounded-xl text-white text-sm focus:border-blue-500 focus:outline-none transition-all"
+                    />
                   </div>
+
+                  {/* EXPERIENCE */}
                   <div className="col-span-1 space-y-1">
-                    <label className="text-[9px] text-slate-500 font-bold uppercase tracking-widest ml-1">Experience (Years)</label>
-                    <input value={formData.total_experience_years} onChange={e => setFormData({ ...formData, total_experience_years: e.target.value })} className="w-full bg-slate-950 border border-slate-800 p-2.5 rounded-xl text-white text-sm" />
+                    <label className="text-[9px] text-blue-500 font-black uppercase tracking-widest ml-1">Experience (Years)</label>
+                    <input
+                      value={formData.total_experience_years}
+                      onChange={e => setFormData({ ...formData, total_experience_years: e.target.value })}
+                      className="w-full bg-slate-900/50 border border-white/10 p-3 rounded-xl text-white text-sm focus:border-blue-500 focus:outline-none transition-all font-mono"
+                    />
                   </div>
+
+                  {/* EDUCATION */}
                   <div className="col-span-2 space-y-1">
-                    <label className="text-[9px] text-slate-500 font-bold uppercase tracking-widest ml-1">Education</label>
-                    <input value={formData.education} onChange={e => setFormData({ ...formData, education: e.target.value })} className="w-full bg-slate-950 border border-slate-800 p-2.5 rounded-xl text-white text-sm" />
+                    <label className="text-[9px] text-blue-500 font-black uppercase tracking-widest ml-1">Education</label>
+                    <input
+                      value={formData.education}
+                      onChange={e => setFormData({ ...formData, education: e.target.value })}
+                      className="w-full bg-slate-900/50 border border-white/10 p-3 rounded-xl text-white text-sm focus:border-blue-500 focus:outline-none transition-all"
+                    />
                   </div>
+
+                  {/* SKILLS */}
                   <div className="col-span-2 space-y-1">
-                    <label className="text-[9px] text-slate-500 font-bold uppercase tracking-widest ml-1">Skills</label>
-                    <textarea value={formData.skills} onChange={e => setFormData({ ...formData, skills: e.target.value })} className="w-full bg-slate-950 border border-slate-800 p-2.5 rounded-xl text-white text-xs h-16 resize-none" />
+                    <label className="text-[9px] text-blue-500 font-black uppercase tracking-widest ml-1">Specialized Skills</label>
+                    <textarea
+                      value={formData.skills}
+                      onChange={e => setFormData({ ...formData, skills: e.target.value })}
+                      className="w-full bg-slate-900/50 border border-white/10 p-3 rounded-xl text-white text-xs h-20 resize-none focus:border-blue-500 focus:outline-none transition-all leading-relaxed"
+                    />
                   </div>
+
+                  {/* GITHUB */}
                   <div className="col-span-1 space-y-1">
-                    <label className="text-[9px] text-slate-500 font-bold uppercase tracking-widest ml-1">GitHub</label>
-                    <input value={formData.github_url} onChange={e => setFormData({ ...formData, github_url: e.target.value })} className="w-full bg-slate-950 border border-slate-800 p-2.5 rounded-xl text-white text-xs" />
+                    <label className="text-[9px] text-blue-500 font-black uppercase tracking-widest ml-1">GitHub Log</label>
+                    <input
+                      value={formData.github_url}
+                      onChange={e => setFormData({ ...formData, github_url: e.target.value })}
+                      className="w-full bg-slate-900/50 border border-white/10 p-3 rounded-xl text-slate-300 text-[11px] focus:border-blue-500 focus:outline-none transition-all font-mono"
+                    />
                   </div>
+
+                  {/* LINKEDIN */}
                   <div className="col-span-1 space-y-1">
-                    <label className="text-[9px] text-slate-500 font-bold uppercase tracking-widest ml-1">LinkedIn</label>
-                    <input value={formData.linkedin_url} onChange={e => setFormData({ ...formData, linkedin_url: e.target.value })} className="w-full bg-slate-950 border border-slate-800 p-2.5 rounded-xl text-white text-xs" />
+                    <label className="text-[9px] text-blue-500 font-black uppercase tracking-widest ml-1">LinkedIn Signal</label>
+                    <input
+                      value={formData.linkedin_url}
+                      onChange={e => setFormData({ ...formData, linkedin_url: e.target.value })}
+                      className="w-full bg-slate-900/50 border border-white/10 p-3 rounded-xl text-slate-300 text-[11px] focus:border-blue-500 focus:outline-none transition-all font-mono"
+                    />
                   </div>
                 </div>
 
-                <div className="mt-6 flex gap-4">
-                  <button onClick={() => setStep(1)} className="text-slate-400 font-bold text-[10px] uppercase tracking-widest flex items-center gap-2 cursor-pointer"><ArrowLeft size={14} /> Re-Upload</button>
-                  <button onClick={() => setStep(3)} className="flex-1 bg-blue-600 text-white py-4 rounded-2xl font-bold hover:bg-blue-500 shadow-lg shadow-blue-900/40 uppercase tracking-widest text-xs cursor-pointer">Verify & Next</button>
+                {/* NAVIGATION FOOTER */}
+                <div className="mt-8 pt-6 border-t border-white/5 flex gap-4 items-center">
+                  <button
+                    onClick={() => setStep(1)}
+                    className="px-4 py-2 text-slate-500 hover:text-white font-bold text-[10px] uppercase tracking-widest transition-colors flex items-center gap-2"
+                  >
+                    <ArrowLeft size={14} /> Abort & Retry
+                  </button>
+
+                  <button
+                    onClick={() => setStep(3)}
+                    className="flex-1 bg-gradient-to-r from-blue-700 to-blue-600 text-white py-4 rounded-2xl font-black uppercase tracking-[0.2em] text-[10px] hover:from-blue-600 hover:to-blue-500 shadow-[0_0_20px_rgba(37,99,235,0.3)] active:scale-[0.98] transition-all"
+                  >
+                    Authorize & Proceed
+                  </button>
                 </div>
               </motion.div>
             )}
 
             {step === 3 && (
-              <div className="space-y-6">
-                <h3 className="text-xl font-bold text-white uppercase tracking-tighter">
-                  {isLoggedIn ? "Confirm Mission Parameters" : "Secure Your Credentials"}
-                </h3>
+              <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                {/* HEADER SECTION */}
+                <div className="relative">
+                  <div className="absolute -left-4 top-0 w-1 h-full bg-blue-500 shadow-[0_0_15px_rgba(59,130,246,0.5)]" />
+                  <h3 className="text-2xl font-black text-white uppercase tracking-tighter leading-none">
+                    {isLoggedIn ? "Final Flight" : "Secure Your"}
+                    <span className="block text-blue-500">Credentials</span>
+                  </h3>
+                </div>
 
-                {!isLoggedIn ? (
-                  <>
-                    <p className="text-slate-400 text-xs">Create an access key to track your mission logs.</p>
-                    <input
-                      type="password"
-                      placeholder="New Access Key"
-                      className="..."
-                      onChange={(e) => setMissionPassword(e.target.value)}
-                    />
-                  </>
-                ) : (
-                  <div className="p-4 bg-blue-500/10 border border-blue-500/20 rounded-2xl">
-                    <p className="text-blue-400 text-xs font-bold uppercase tracking-widest mb-1">Authenticated Pilot</p>
-                    <p className="text-sm text-white">{formData.email}</p>
+                {/* CONTENT SECTION */}
+                <div className="space-y-6">
+                  {!isLoggedIn ? (
+                    <div className="space-y-4">
+                      <div className="flex items-center gap-2">
+                        <div className="h-2 w-2 rounded-full bg-blue-500 animate-pulse" />
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em]">Encryption Required</p>
+                      </div>
+
+                      <div className="relative group">
+                        <div className="absolute inset-0 bg-blue-500/20 blur-xl group-hover:bg-blue-500/30 transition-all opacity-0 group-focus-within:opacity-100" />
+                        <input
+                          type="password"
+                          placeholder="Enter Access Key"
+                          className="relative w-full bg-slate-900/50 border-2 border-white/10 rounded-2xl px-6 py-4 text-white placeholder:text-slate-600 focus:border-blue-500 focus:outline-none transition-all font-mono tracking-widest"
+                          onChange={(e) => setMissionPassword(e.target.value)}
+                        />
+                        <p className="mt-2 text-[9px] text-slate-500 uppercase tracking-widest px-2">
+                          Note: This key allows you to track telemetry logs in your dashboard.
+                        </p>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="relative overflow-hidden p-6 bg-slate-900/40 border border-blue-500/30 rounded-3xl backdrop-blur-md">
+                      <div className="absolute top-0 right-0 p-2">
+                        <div className="px-2 py-0.5 rounded-full bg-blue-500/20 border border-blue-500/40 text-[8px] font-bold text-blue-400 uppercase">
+                          Verified
+                        </div>
+                      </div>
+                      <div className="flex flex-col gap-1">
+                        <span className="text-[10px] font-bold text-blue-500 uppercase tracking-widest">Authenticated Specialist</span>
+                        <span className="text-lg font-bold text-white tracking-tight">{formData.email}</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* ACTIONS */}
+                <div className="pt-4 space-y-4">
+                  <button
+                    onClick={handleFinalSubmit}
+                    className="group relative w-full overflow-hidden rounded-2xl bg-blue-600 px-8 py-5 transition-all hover:bg-blue-500 active:scale-[0.98]"
+                  >
+                    {/* Button Inner Glow */}
+                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
+
+                    <div className="flex items-center justify-center gap-3">
+                      <span className="text-sm font-black uppercase tracking-[0.3em] text-white">
+                        Launch Satellite
+                      </span>
+                      <span className="text-xl transition-transform group-hover:translate-x-1 group-hover:-translate-y-1">🚀</span>
+                    </div>
+                  </button>
+
+                  <div className="flex justify-center">
+                    <p className="text-[9px] text-slate-600 font-medium uppercase tracking-tighter">
+                      By launching, you agree to the <span className="text-slate-400 underline cursor-pointer">Interstellar Terms of Service</span>
+                    </p>
                   </div>
-                )}
-
-                <button onClick={handleFinalSubmit} className="...">
-                  🚀 Launch Satellite
-                </button>
+                </div>
               </div>
             )}
 

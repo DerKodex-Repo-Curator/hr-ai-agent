@@ -12,3 +12,7 @@ celery
 redis
 sqlalchemy
 psycopg2
+pymupdf
+openai
+python-multipart
+

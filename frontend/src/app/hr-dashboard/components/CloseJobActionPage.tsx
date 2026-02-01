@@ -61,7 +61,7 @@ const CloseJobActionPage: React.FC<CloseJobActionPageProps> = ({ job, candidates
                         <input type="checkbox" checked={selected.includes(c.id)} readOnly />
                         <div style={{ flex: 1 }}>
                             <div style={{ fontWeight: "bold" }}>{c.name}</div>
-                            <div>ATS: {c.ats_score || 0}</div>
+                            <div>ATS: {c.ats_score || 10}</div>
                         </div>
                     </div>
                 ))}
