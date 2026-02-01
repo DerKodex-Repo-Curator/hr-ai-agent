@@ -30,11 +30,13 @@ export default function CareerPage() {
   useEffect(() => {
     async function fetchJobs() {
       try {
-        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/jobs/`);
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/jobs`);
         const data = await response.json();
         setAllJobs(data);
         setFilteredJobs(data);
       } catch (error) {
+        setAllJobs([]);
+        setFilteredJobs([]);
         console.error("Mission Control: Error fetching orbital roles", error);
       } finally {
         setLoading(false);
@@ -53,7 +55,7 @@ export default function CareerPage() {
     setFilteredJobs(filtered);
   }, [searchQuery, selectedDept, allJobs]);
 
-  const departments = Array.from(new Set(allJobs.map((j) => j.department)));
+  const departments = Array.from(new Set(allJobs?.map((j) => j.department)));
 
   const scrollToPositions = () => {
     positionsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -112,7 +114,7 @@ export default function CareerPage() {
                   className="w-full bg-slate-950/50 border border-white/10 rounded-lg py-2 pl-9 pr-8 text-xs focus:border-blue-500 outline-none appearance-none cursor-pointer"
                 >
                   <option>All Departments</option>
-                  {departments.map((dept) => (
+                  {departments?.map((dept) => (
                     <option key={dept} value={dept}>{dept}</option>
                   ))}
                 </select>
@@ -145,7 +147,7 @@ export default function CareerPage() {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {filteredJobs.map((job) => (
+            {filteredJobs?.map((job) => (
               <div key={job.id} className="group bg-slate-900/60 border border-white/10 p-6 rounded-2xl hover:border-blue-500/40 transition-all hover:-translate-y-1 backdrop-blur-sm">
                 <h3 className="text-lg font-bold mb-2 group-hover:text-blue-400 transition-colors">{job.role_title}</h3>
                 <div className="flex gap-3 text-[11px] text-slate-500 mb-4 font-medium">

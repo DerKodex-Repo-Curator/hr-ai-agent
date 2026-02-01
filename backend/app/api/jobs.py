@@ -38,7 +38,7 @@ async def get_job_applicants(job_id: int, db: Session = Depends(get_db)):
         })
     return formatted_candidates
 
-@router.post("/", response_model=JobResponse, status_code=201)
+@router.post("", response_model=JobResponse, status_code=201)
 def create_job(job_in: JobCreate, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
     """
     Create a new job posting using SQLAlchemy.
@@ -63,7 +63,7 @@ def create_job(job_in: JobCreate, background_tasks: BackgroundTasks, db: Session
     
     return new_job
 
-@router.get("/", response_model=List[JobResponse])
+@router.get("", response_model=List[JobResponse])
 def list_jobs(status: str = None, db: Session = Depends(get_db)):
     """
     List all jobs with SQLAlchemy query filtering.
