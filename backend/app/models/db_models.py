@@ -16,6 +16,8 @@ class Job(Base):
     target_shortlist_count = Column(Integer, default=5)
     status = Column(String, default="Open") # Open, Closed
     closing_date = Column(DateTime(timezone=True))
+    requirements = Column(Text, nullable=True)
+    jd_summary = Column(JSON, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     # Relationship to link jobs to applications

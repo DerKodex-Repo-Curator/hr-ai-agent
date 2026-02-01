@@ -1,5 +1,5 @@
 import os
-from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks, requests
+from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
 from sqlalchemy.orm import Session
 from sqlalchemy import desc
 from typing import Any, Dict, List
@@ -14,6 +14,7 @@ from typing import Optional
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from fastapi import APIRouter, Depends, BackgroundTasks
+import requests
 
 router = APIRouter(prefix="/jobs", tags=["Jobs"])
 
@@ -71,7 +72,7 @@ class JobResponse(BaseModel):
     target_shortlist_count: int
     closing_date: datetime
     created_at: datetime
-    jd_summary: Dict[str, Any] = None
+    jd_summary: Optional[Dict[str, Any]] = None
     pipeline: Dict[str, int] = {
         "applied": 0,
         "ats_screening": 0,
@@ -108,7 +109,7 @@ def call_jd_normalize_api(job_data: Dict[str, str]) -> Dict[str, Any]:
             JD_NORMALIZE_URL,
             headers=headers,
             json=payload,
-            timeout=30
+            timeout=300
         )
         
         response.raise_for_status()

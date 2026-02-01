@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from typing import Optional, List
+from typing import Any, Dict, Optional, List
 from datetime import datetime
 
 class JobCreate(BaseModel):
@@ -20,7 +20,7 @@ class JobResponse(BaseModel):
     target_shortlist_count: int
     closing_date: Optional[datetime]
     ai_questionnaire: List[dict] = []
-    jd_summary: Optional[dict] = None
+    jd_summary: Optional[Dict[str, Any]] = None
     created_at: datetime
 
 class JobCloseRequest(BaseModel):

@@ -144,7 +144,7 @@ def send_rejection_email(app, job):
             
             <div class="footer">
                 <p class="footer-text">
-                    Reference ID: {app.id[:8]}-{job.id}
+                    "Reference ID: {str(app.id)[:8]}-{app.job_id}"
                 </p>
             </div>
         </div>

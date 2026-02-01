@@ -9,7 +9,6 @@ interface JobCardProps {
 }
 
 const JobCard: React.FC<JobCardProps> = ({ job, onClick }) => {
-    console.log(job);
     return (
         <div className="job-card" onClick={onClick}>
             <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "0.5rem" }}>
