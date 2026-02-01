@@ -64,6 +64,9 @@ export interface Interview {
 }
 
 export interface CreateJobData {
+    department: string;
+    requirements: string;
+    description: string;
     title: string;
     location: string;
     target_shortlist: number;
